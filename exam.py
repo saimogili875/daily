@@ -139,7 +139,7 @@ def run_code():
 
     data = request.get_json(silent=True) or {}
     code = data.get('code', '')
-    language = data.get('language', 'python').lower()
+    raw_language = data.get('language', 'python').lower()
     stdin = data.get('stdin', '')
     run_samples = data.get('run_samples', False)
 
@@ -150,13 +150,20 @@ def run_code():
 
     # Validation: language whitelist
     allowed_langs = current_app.config.get('ALLOWED_LANGUAGES', {'python'})
-    if language not in allowed_langs:
-        return jsonify({'error': f'Language "{language}" is not permitted.'}), 400
+    if raw_language not in allowed_langs:
+        return jsonify({'error': f'Language "{raw_language}" is not permitted.'}), 400
 
+    backend_language = 'python' if raw_language in ('python', 'python_pyodide') else raw_language
     question = get_daily_question()
+    needs_numpy = getattr(question, 'numpy_allowed', False) if question else False
 
     if run_samples and question:
-        sample_results = executor.run_tests(code=code, language=language, test_cases=question.samples)
+        sample_results = executor.run_tests(
+            code=code, 
+            language=backend_language, 
+            test_cases=question.samples, 
+            needs_numpy=needs_numpy
+        )
         return jsonify({
             'type': 'samples',
             'summary': f"Passed {sample_results['passed']}/{sample_results['total']} sample tests.",
@@ -165,7 +172,12 @@ def run_code():
             'results': sample_results['results']
         })
     else:
-        result = executor.execute(code=code, language=language, stdin=stdin)
+        result = executor.execute(
+            code=code, 
+            language=backend_language, 
+            stdin=stdin, 
+            needs_numpy=needs_numpy
+        )
         return jsonify({
             'type': 'custom',
             'stdout': result.get('stdout', ''),
@@ -183,6 +195,7 @@ def submit_exam():
     Daily Exam Submission Endpoint:
     Enforces time window, 10 KB code size limit, 1 submission per user per day constraint,
     runs hidden test cases, fetches AI evaluation, and recalculates streaks.
+    Browser execution is NEVER trusted for grading; tests are evaluated on the backend sandbox.
     """
     is_open, _ = get_exam_window_status()
     today_ist = get_current_ist_date()
@@ -201,7 +214,7 @@ def submit_exam():
 
     data = request.get_json(silent=True) or {}
     code = data.get('code', '').strip()
-    language = data.get('language', 'python').lower()
+    raw_language = data.get('language', 'python').lower()
 
     if not code:
         return jsonify({'error': 'Cannot submit empty code.'}), 400
@@ -213,15 +226,23 @@ def submit_exam():
 
     # Validation: language whitelist
     allowed_langs = current_app.config.get('ALLOWED_LANGUAGES', {'python'})
-    if language not in allowed_langs:
+    if raw_language not in allowed_langs:
         return jsonify({'error': 'Unsupported programming language.'}), 400
 
+    backend_language = 'python' if raw_language in ('python', 'python_pyodide') else raw_language
     question = get_daily_question()
     if not question:
         return jsonify({'error': 'No question active for today.'}), 500
 
-    # Evaluate against hidden test cases
-    test_eval = executor.run_tests(code=code, language=language, test_cases=question.hidden_tests)
+    needs_numpy = getattr(question, 'numpy_allowed', False)
+
+    # Evaluate against hidden test cases using backend sandbox
+    test_eval = executor.run_tests(
+        code=code, 
+        language=backend_language, 
+        test_cases=question.hidden_tests, 
+        needs_numpy=needs_numpy
+    )
     passed_count = test_eval['passed']
     total_count = test_eval['total']
     score = test_eval['score']
@@ -241,7 +262,7 @@ def submit_exam():
         user_id=current_user.id,
         question_id=question.id,
         submission_date=today_ist,
-        language=language,
+        language=raw_language,
         code=code,
         status=status,
         passed_test_cases=passed_count,
@@ -405,7 +426,8 @@ def trigger_groq_question_generation():
         hint=q_data.get('hint', ''),
         time_limit_sec=q_data.get('time_limit_sec', 5),
         exam_date=today_ist,
-        is_ai_generated=True
+        is_ai_generated=True,
+        numpy_allowed=q_data.get('numpy_allowed', False)
     )
     new_q.samples = q_data.get('samples', [])
     new_q.hidden_tests = q_data.get('hidden_tests', [])

@@ -10,12 +10,19 @@ A production-ready, highly secure Flask web platform for daily timed algorithmic
   - Exam access and run/submit operations open **strictly from 9:00 PM to 10:00 PM IST (Asia/Kolkata)**.
   - Server time is calculated using `pytz` (never trusts client system clocks).
   - Outside the window, a live countdown ticks down to the next 9:00 PM IST, and `/exam/run` + `/exam/submit` endpoints reject requests with HTTP 403.
-- **Embedded Python Online Compiler**:
+- **Embedded Python Online Compiler & Pyodide WebWorker**:
   - Monaco Editor (VS Code core) loaded via CDN with dark mode syntax highlighting, auto-indentation, and line numbers.
   - Interactive online compiler console supporting **Custom STDIN**, real-time STDOUT/STDERR stream output, exit code, and execution runtime in milliseconds.
   - Instant **Sample Test Case Runner** testing against visible problem cases.
+  - **"Python (Browser, numpy)" Option**:
+    - Powered by Pyodide (v0.26.4 WASM) running in an isolated background **Web Worker** so the browser UI never freezes.
+    - Pre-bundles and lazy-loads **NumPy** (with auto-import for Pandas and Matplotlib).
+    - **In-Browser Virtual File System (FS)**: Code can write, read, and manipulate files with standard `open('data.txt', 'w')`. Exam workspace includes an interactive File System panel to list, view, create, and delete files.
+    - **Worker Guardrails**: Strict 10-second timeout automatically terminates and restarts hanging or infinite loops, and stdout/stderr output is safely capped at 50 KB.
+    - **Untrusted Browser Grading**: Browser execution is strictly for candidate testing and running. On **Submit**, the code is evaluated entirely on the secure server-side sandbox against hidden test cases. If a question is flagged with `numpy_allowed`, execution routes to the dedicated numpy executor.
 - **Groq AI Question Setter & Evaluator**:
   - Generates original algorithmic coding problems based on study files uploaded by the administrator (.py, .txt, .pdf, .docx).
+  - Automatically flags questions with `numpy_allowed = True` when study material covers arrays, matrices, or numerical computing.
   - Uses `llama-3.3-70b-versatile` via Groq's API.
   - Daily automatic generation scheduled at **8:55 PM IST** via `APScheduler`, with manual on-demand generation in the Admin portal.
   - Generates 2 visible sample cases and 5 hidden test cases with strict JSON structure.
@@ -200,12 +207,29 @@ git push -u origin main
 
 Render will automatically provision the container, apply migrations, seed the 30 questions, and launch the Gunicorn application server behind HTTPS.
 
+## 🐍 Python (Browser, NumPy) via Pyodide & File System Support
+
+Candidates can select **"Python (Browser, numpy)"** from the language dropdown:
+1. **Isolated Web Worker**: Pyodide runs in a background thread using WebAssembly (`wasm-unsafe-eval` CSP enabled). The browser UI and Monaco editor remain completely fluid.
+2. **NumPy & Data Libraries**: NumPy is bundled and lazy-loaded via `loadPackage('numpy')`. If user code imports `pandas` or `matplotlib`, the worker dynamically loads them.
+3. **In-Browser File System (FS)**: Emscripten's virtual FS operates at `/home/pyodide`. Candidates can create, read, and write files directly in Python (`open("data.txt", "w")`). The exam UI includes an interactive **File System panel** to inspect, create, view, and delete virtual files.
+4. **Safety Guardrails**: A strict 10-second timer terminates and restarts hanging workers, and output is capped at 50 KB.
+5. **Zero Trust in Client Grading**: The browser is never trusted for official grading. On Submit, code is posted to `/exam/submit` where hidden test cases run on the backend sandbox (configured via `EXECUTOR_URL` / `EXECUTOR_NUMPY_URL`).
+
 ---
 
 ## 🧪 Testing Verification
 
-You can run automated or interactive validation of:
-- **Lockout Mechanism**: Make 5 incorrect password attempts with a username; observe that the account enters lockout for 15 minutes with a generic "Invalid credentials." message.
-- **Time Window**: Set `BYPASS_TIME_WINDOW=false` (default). Outside 9:00 PM to 10:00 PM IST, the exam page redirects to `closed.html` with a live ticking countdown, and direct POST calls to `/exam/run` or `/exam/submit` respond with HTTP 403.
-- **Online Compiler & Sandboxing**: In the exam workspace, write Python code, enter custom input into the STDIN tab, and hit "Run Code" to observe external sandbox execution results in the terminal pane.
-- **Streak Calculation**: Submit a solution within the window to verify that the IST-based streak increments safely and reflects on the candidate's dashboard and activity heatmap.
+You can run automated or interactive validation:
+```bash
+./venv/bin/python3 test_suite.py
+```
+Validates:
+- **Lockout Mechanism**: 5 failed login attempts trigger 15-minute lock with generic "Invalid credentials."
+- **Time Window**: Server-side 9:00 PM – 10:00 PM IST enforcement (closed countdown clock & 403 on run/submit).
+- **Sandbox Execution**: Piston / Judge0 execution with custom STDIN.
+- **Pyodide & CSP Compliance**: Verifies Content-Security-Policy headers allow `cdn.jsdelivr.net`, `'wasm-unsafe-eval'`, and `worker-src blob:`.
+- **Untrusted Browser Grading**: Verifies submissions under `python_pyodide` are securely graded on the backend sandbox.
+- **NumPy Question Routing**: Verifies `numpy_allowed` flag and study file keyword detection.
+- **Streak Calculation**: Increments on consecutive IST dates and resets on gaps.
+

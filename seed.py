@@ -676,7 +676,8 @@ def seed_database(app):
                         constraints=q_data['constraints'],
                         hint=q_data.get('hint', ''),
                         time_limit_sec=q_data.get('time_limit_sec', 5),
-                        is_ai_generated=False
+                        is_ai_generated=False,
+                        numpy_allowed=q_data.get('numpy_allowed', False)
                     )
                     q.samples = q_data['samples']
                     q.hidden_tests = q_data['hidden_tests']

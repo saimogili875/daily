@@ -1,6 +1,7 @@
 /**
  * Daily Code Exam - Online Compiler & Exam Interface
- * Monaco Editor Integration, Interactive Sandbox Execution, Live Countdown Timer, and CSRF Protection
+ * Monaco Editor Integration, Pyodide (Browser, NumPy) WebWorker Runner,
+ * Interactive Sandbox Execution, Live Countdown Timer, and CSRF Protection
  */
 
 (function () {
@@ -18,7 +19,6 @@
         const editorContainer = document.getElementById('monaco-editor-container');
         if (!editorContainer) return;
 
-        // Configure AMD loader for Monaco
         require.config({
             paths: {
                 vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs'
@@ -139,14 +139,112 @@ if __name__ == '__main__':
                 document.querySelectorAll('.console-tab-pane').forEach(p => p.style.display = 'none');
                 const activePane = document.getElementById(`tab-${target}`);
                 if (activePane) activePane.style.display = 'block';
+
+                if (target === 'files' && window.PyodideRunner) {
+                    window.PyodideRunner.listFiles().then(renderFilesList);
+                }
             });
         });
     }
 
-    // Switch to a specific console tab programmatically
     function switchConsoleTab(tabName) {
         const btn = document.querySelector(`.console-tab-btn[data-tab="${tabName}"]`);
         if (btn) btn.click();
+    }
+
+    // Pyodide Virtual File System Panel
+    function initPyodideFileSystem() {
+        if (!window.PyodideRunner) return;
+
+        window.PyodideRunner.onFilesChange = (files) => {
+            renderFilesList(files);
+        };
+
+        window.PyodideRunner.onStatusChange = (statusMsg, isReady) => {
+            const badge = document.getElementById('pyodide-engine-badge');
+            if (badge) {
+                badge.textContent = isReady ? 'Pyodide + NumPy Ready' : statusMsg;
+                badge.className = isReady ? 'badge badge-easy' : 'badge badge-medium';
+            }
+        };
+
+        const btnRefresh = document.getElementById('btn-refresh-fs');
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', () => {
+                window.PyodideRunner.listFiles().then(renderFilesList);
+            });
+        }
+
+        const btnCreate = document.getElementById('btn-create-fs-file');
+        if (btnCreate) {
+            btnCreate.addEventListener('click', () => {
+                const filename = prompt("Enter filename (e.g. data.txt):");
+                if (!filename || !filename.trim()) return;
+                const content = prompt("Enter file content (optional):", "");
+                window.PyodideRunner.writeFile(filename.trim(), content || '').then(() => {
+                    window.PyodideRunner.listFiles().then(renderFilesList);
+                });
+            });
+        }
+    }
+
+    function renderFilesList(files) {
+        const container = document.getElementById('fs-file-list');
+        if (!container) return;
+
+        if (!files || files.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; padding:0.5rem 0;">No files in virtual filesystem. Create files with <code>open("data.txt", "w")</code> in your code or via the "+ New File" button.</div>';
+            return;
+        }
+
+        let html = `
+            <table class="custom-table" style="font-size:0.8rem; margin:0;">
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Size</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        files.forEach(f => {
+            html += `
+                <tr>
+                    <td><code>${escapeHtml(f.name)}</code></td>
+                    <td>${f.size} B</td>
+                    <td style="text-align:right;">
+                        <button type="button" class="btn btn-secondary btn-sm btn-fs-view" data-filename="${escapeHtml(f.name)}" style="padding:0.2rem 0.5rem; font-size:0.75rem;">View</button>
+                        <button type="button" class="btn btn-secondary btn-sm btn-fs-delete" data-filename="${escapeHtml(f.name)}" style="padding:0.2rem 0.5rem; font-size:0.75rem; color:var(--danger);">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+
+        // Attach action handlers
+        container.querySelectorAll('.btn-fs-view').forEach(b => {
+            b.addEventListener('click', function () {
+                const fn = this.dataset.filename;
+                window.PyodideRunner.readFile(fn).then(content => {
+                    alert(`File: ${fn}\n\n${content}`);
+                }).catch(err => alert(`Error reading file: ${err.message}`));
+            });
+        });
+
+        container.querySelectorAll('.btn-fs-delete').forEach(b => {
+            b.addEventListener('click', function () {
+                const fn = this.dataset.filename;
+                if (confirm(`Delete virtual file "${fn}"?`)) {
+                    window.PyodideRunner.deleteFile(fn).then(() => {
+                        window.PyodideRunner.listFiles().then(renderFilesList);
+                    });
+                }
+            });
+        });
     }
 
     // Setup Actions: Run Code, Run Samples, Submit
@@ -156,11 +254,26 @@ if __name__ == '__main__':
         const submitBtn = document.getElementById('btn-submit-exam');
         const resetBtn = document.getElementById('btn-reset-code');
         const langSelect = document.getElementById('select-language');
+        const pyodideBadge = document.getElementById('pyodide-engine-badge');
 
         if (langSelect && editor) {
             langSelect.addEventListener('change', function () {
                 const lang = this.value;
-                monaco.editor.setModelLanguage(editor.getModel(), lang === 'cpp' ? 'cpp' : lang);
+
+                if (lang === 'python_pyodide') {
+                    monaco.editor.setModelLanguage(editor.getModel(), 'python');
+                    if (pyodideBadge) {
+                        pyodideBadge.style.display = 'inline-block';
+                        pyodideBadge.textContent = 'Loading Pyodide Worker...';
+                    }
+                    if (window.PyodideRunner) {
+                        window.PyodideRunner.init();
+                    }
+                } else {
+                    if (pyodideBadge) pyodideBadge.style.display = 'none';
+                    const monacoLang = lang === 'cpp' ? 'cpp' : (lang === 'python' ? 'python' : lang);
+                    monaco.editor.setModelLanguage(editor.getModel(), monacoLang);
+                }
             });
         }
 
@@ -186,8 +299,8 @@ if __name__ == '__main__':
         }
     }
 
-    // Interactive Code Execution via Sandbox
-    function executeCode(runSamples = false) {
+    // Code Execution (Branches to Pyodide Worker or Backend Sandbox based on Language)
+    async function executeCode(runSamples = false) {
         if (!editor) return;
         const code = editor.getValue();
         const stdin = document.getElementById('stdin-textarea')?.value || '';
@@ -195,6 +308,7 @@ if __name__ == '__main__':
         const terminalOut = document.getElementById('terminal-stdout');
         const statusBadge = document.getElementById('terminal-status-badge');
         const timeBadge = document.getElementById('terminal-time-badge');
+        const engineLabel = document.getElementById('terminal-engine-label');
         const runBtn = document.getElementById('btn-run-code');
         const sampleBtn = document.getElementById('btn-run-samples');
 
@@ -203,9 +317,81 @@ if __name__ == '__main__':
             return;
         }
 
-        // UI state: loading
         if (runBtn) runBtn.disabled = true;
         if (sampleBtn) sampleBtn.disabled = true;
+
+        // Branch 1: In-Browser Pyodide Execution (when "Python (Browser, numpy)" is chosen)
+        if (language === 'python_pyodide') {
+            if (engineLabel) engineLabel.textContent = "Pyodide (Worker)";
+
+            if (runSamples) {
+                switchConsoleTab('samples');
+                const samplesContainer = document.getElementById('samples-output-container');
+                if (samplesContainer) samplesContainer.innerHTML = '<div class="text-muted p-2">Running sample test cases in Pyodide Web Worker...</div>';
+
+                // Fetch sample test cases from page DOM
+                const sampleBoxes = document.querySelectorAll('.sample-box');
+                const sampleCases = [];
+                sampleBoxes.forEach(sb => {
+                    const pres = sb.querySelectorAll('pre');
+                    if (pres.length >= 2) {
+                        sampleCases.push({
+                            input: pres[0].textContent,
+                            output: pres[1].textContent
+                        });
+                    }
+                });
+
+                const results = [];
+                let passedCount = 0;
+                for (let i = 0; i < sampleCases.length; i++) {
+                    const tc = sampleCases[i];
+                    const res = await window.PyodideRunner.run(code, tc.input, [], false);
+                    const actual = (res.stdout || '').trim();
+                    const expected = tc.output.trim();
+                    const passed = (res.status === 'SUCCESS' && actual === expected);
+                    if (passed) passedCount++;
+
+                    results.push({
+                        test_index: i + 1,
+                        input: tc.input,
+                        expected: expected,
+                        actual: actual,
+                        passed: passed,
+                        stderr: res.stderr,
+                        time_ms: res.time_ms,
+                        status: passed ? 'PASSED' : (res.status === 'SUCCESS' ? 'FAILED' : res.status)
+                    });
+                }
+
+                renderSampleResults({
+                    summary: `Passed ${passedCount}/${sampleCases.length} sample tests (Pyodide Worker).`,
+                    results: results
+                });
+
+                if (runBtn) runBtn.disabled = false;
+                if (sampleBtn) sampleBtn.disabled = false;
+                return;
+            }
+
+            switchConsoleTab('output');
+            if (terminalOut) terminalOut.textContent = "Executing in Pyodide Web Worker (10s timeout)...";
+            if (statusBadge) {
+                statusBadge.textContent = "RUNNING";
+                statusBadge.className = "badge badge-ai";
+            }
+
+            const clearFS = document.getElementById('fs-clear-on-run')?.checked !== false;
+            const res = await window.PyodideRunner.run(code, stdin, [], clearFS);
+            renderTerminalOutput(res);
+
+            if (runBtn) runBtn.disabled = false;
+            if (sampleBtn) sampleBtn.disabled = false;
+            return;
+        }
+
+        // Branch 2: Server-Side Sandboxed Execution (Piston / Judge0)
+        if (engineLabel) engineLabel.textContent = "Backend Sandbox";
 
         if (runSamples) {
             switchConsoleTab('samples');
@@ -213,7 +399,7 @@ if __name__ == '__main__':
             if (samplesContainer) samplesContainer.innerHTML = '<div class="text-muted p-2">Running sample test cases in external sandbox...</div>';
         } else {
             switchConsoleTab('output');
-            if (terminalOut) terminalOut.textContent = "Executing in secure sandbox...";
+            if (terminalOut) terminalOut.textContent = "Executing in external sandbox...";
             if (statusBadge) {
                 statusBadge.textContent = "RUNNING";
                 statusBadge.className = "badge badge-ai";
@@ -320,6 +506,8 @@ if __name__ == '__main__':
     }
 
     // Daily Exam Final Submission
+    // CRITICAL: The browser is NEVER trusted for grading.
+    // The code is transmitted to the server where hidden test cases are evaluated on the backend sandbox.
     function handleSubmitExam() {
         if (!editor) return;
         const code = editor.getValue().trim();
@@ -331,12 +519,12 @@ if __name__ == '__main__':
             return;
         }
 
-        const confirmMsg = "Are you sure you want to SUBMIT? You can only submit ONCE per day! All 5 hidden test cases will be evaluated and your streak will update.";
+        const confirmMsg = "Are you sure you want to SUBMIT? You can only submit ONCE per day! All hidden test cases will be securely evaluated on the server.";
         if (!confirm(confirmMsg)) return;
 
         if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner"></span> Evaluating...';
+            submitBtn.innerHTML = '<span class="spinner"></span> Grading on Server...';
         }
 
         fetch('/exam/submit', {
@@ -414,5 +602,6 @@ if __name__ == '__main__':
         initCountdown();
         initConsoleTabs();
         initActionButtons();
+        initPyodideFileSystem();
     });
 })();

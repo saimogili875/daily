@@ -30,7 +30,8 @@ Rules:
   "samples": [{"input": "", "output": "", "explanation": ""}],
   "hidden_tests": [{"input": "", "output": ""}],
   "hint": "",
-  "time_limit_sec": 5
+  "time_limit_sec": 5,
+  "numpy_allowed": false
 }"""
 
 
@@ -129,6 +130,17 @@ def generate_groq_question(file_text: str, today_ist: str, weekday: str) -> dict
 
         data['topic'] = data.get('topic') or 'Python Programming'
         data['time_limit_sec'] = int(data.get('time_limit_sec') or 5)
+
+        # Detect numpy/arrays in study file content or from Groq JSON
+        file_lower = file_text.lower()
+        has_numpy = bool(
+            data.get('numpy_allowed') is True
+            or 'numpy' in file_lower
+            or 'np.' in file_lower
+            or 'import numpy' in file_lower
+            or ('array' in file_lower and ('dimension' in file_lower or 'matrix' in file_lower))
+        )
+        data['numpy_allowed'] = has_numpy
 
         return data
 

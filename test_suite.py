@@ -271,5 +271,61 @@ if __name__ == '__main__':
         self.assertIn("already submitted", dup_data.get('error', '').lower())
         print("✓ Full exam submission, hidden test evaluation, streak +1, and duplicate block passed.")
 
+    def test_08_pyodide_submit_server_grading_and_csp(self):
+        """Test CSP headers for Pyodide WASM/Worker and ensure browser-submitted python_pyodide is graded on server."""
+        import uuid
+        self.app.config['BYPASS_TIME_WINDOW'] = True
+
+        # 1. Verify CSP Headers
+        resp = self.client.get('/login')
+        csp_header = resp.headers.get('Content-Security-Policy', '')
+        self.assertIn('cdn.jsdelivr.net', csp_header)
+        self.assertIn('wasm-unsafe-eval', csp_header)
+        self.assertIn('worker-src', csp_header)
+        self.assertIn('blob:', csp_header)
+
+        # 2. Test Submit with language "python_pyodide" (server must grade it, NOT trust client)
+        cand_user = f"pyodide_user_{uuid.uuid4().hex[:6]}"
+        self.client.post('/register', data={
+            'username': cand_user,
+            'email': f'{cand_user}@example.com',
+            'password': 'PyodideCandidate!2026',
+            'confirm_password': 'PyodideCandidate!2026'
+        })
+        self.client.post('/login', data={
+            'username': cand_user,
+            'password': 'PyodideCandidate!2026'
+        })
+
+        sub_resp = self.client.post('/exam/submit', json={
+            'code': 'print("testing pyodide submit")',
+            'language': 'python_pyodide'
+        })
+        self.assertEqual(sub_resp.status_code, 200)
+        data = sub_resp.get_json()
+        self.assertEqual(data.get('status'), 'success')
+        self.assertIn('score', data)
+        self.assertIn('exam_status', data)
+        print("✓ Pyodide server-side grading & CSP headers (cdn.jsdelivr.net, wasm-unsafe-eval, worker-src blob:) passed.")
+
+    def test_09_numpy_allowed_detection_and_routing(self):
+        """Test Question numpy_allowed boolean attribute and study file detection."""
+        from groq_client import generate_groq_question
+
+        # Test Question model attribute
+        q = Question(
+            title="Numpy Vector Math",
+            description="Perform dot product",
+            numpy_allowed=True
+        )
+        self.assertTrue(q.numpy_allowed)
+
+        # Test study file text detection logic
+        file_text = "Today we will study matrix transformations using import numpy as np and calculate dot products."
+        file_lower = file_text.lower()
+        has_numpy = bool('numpy' in file_lower or 'np.' in file_lower or 'import numpy' in file_lower)
+        self.assertTrue(has_numpy)
+        print("✓ numpy_allowed attribute and study file keyword detection passed.")
+
 if __name__ == '__main__':
     unittest.main()

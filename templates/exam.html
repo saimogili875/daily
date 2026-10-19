@@ -66,6 +66,9 @@
                         {% if question.is_ai_generated %}
                             <span class="badge badge-ai">Groq AI Question</span>
                         {% endif %}
+                        {% if question.numpy_allowed %}
+                            <span class="badge" style="background:rgba(16, 185, 129, 0.2); color:#34d399; border:1px solid rgba(16, 185, 129, 0.4);">⚡ NumPy Allowed</span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -135,14 +138,18 @@
         <section class="compiler-panel">
             <!-- Compiler Top Bar -->
             <div class="compiler-topbar">
-                <div style="display:flex; align-items:center; gap:0.75rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
                     <label for="select-language" style="font-size:0.85rem; color:var(--text-secondary); font-weight:600;">Language:</label>
                     <select id="select-language" class="form-control" style="width:auto; padding:0.3rem 0.6rem; font-size:0.85rem;">
-                        <option value="python" selected>Python 3</option>
+                        <option value="python" selected>Python 3 (Sandbox)</option>
+                        <option value="python_pyodide">Python (Browser, numpy)</option>
                         <option value="javascript">JavaScript (Node.js)</option>
                         <option value="cpp">C++ (GCC)</option>
                         <option value="java">Java (OpenJDK)</option>
                     </select>
+                    <span id="pyodide-engine-badge" class="badge" style="display:none; background:rgba(139,92,246,0.2); color:#a78bfa; border:1px solid rgba(139,92,246,0.3);">
+                        Pyodide WebWorker
+                    </span>
                     <span id="code-size-counter" class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">
                         0.0 KB / 10 KB
                     </span>
@@ -185,6 +192,9 @@ if __name__ == '__main__':
                     <button type="button" class="console-tab-btn" data-tab="samples">
                         <span>🧪 Sample Tests</span>
                     </button>
+                    <button type="button" class="console-tab-btn" data-tab="files" id="tab-btn-files">
+                        <span>📁 File System (FS)</span>
+                    </button>
                 </div>
 
                 <!-- STDIN Tab -->
@@ -198,6 +208,45 @@ if __name__ == '__main__':
 
                 <!-- Terminal Output Tab -->
                 <div id="tab-output" class="console-tab-content console-tab-pane" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Console Stream</span>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <span id="terminal-engine-label" style="font-size:0.75rem; color:var(--text-muted);">Backend</span>
+                            <span id="terminal-time-badge" class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">0 ms</span>
+                            <span id="terminal-status-badge" class="badge badge-easy">READY</span>
+                        </div>
+                    </div>
+                    <pre id="terminal-stdout" class="console-terminal">Click "Run Code" to test execution via sandbox.</pre>
+                </div>
+
+                <!-- Sample Tests Tab -->
+                <div id="tab-samples" class="console-tab-content console-tab-pane" style="display:none;">
+                    <div id="samples-output-container">
+                        <div style="color:var(--text-secondary); font-size:0.85rem;">
+                            Click "Run Sample Tests" to automatically run your solution against the 2 visible sample cases.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pyodide Virtual File System (FS) Tab -->
+                <div id="tab-files" class="console-tab-content console-tab-pane" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                        <div style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">
+                            In-Browser Pyodide Files (<code>open('filename', 'w')</code>)
+                        </div>
+                        <div style="display:flex; gap:0.75rem; align-items:center;">
+                            <label style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem; cursor:pointer;">
+                                <input type="checkbox" id="fs-clear-on-run" checked> Clear FS on each Run
+                            </label>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-create-fs-file">+ New File</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-fs">↻ Refresh</button>
+                        </div>
+                    </div>
+
+                    <div id="fs-file-list" style="font-size:0.85rem;">
+                        <div style="color:var(--text-muted); font-size:0.85rem;">No files created in virtual filesystem yet. Code using <code>open('data.txt', 'w')</code> will populate files here.</div>
+                    </div>
+                </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                         <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Console Stream</span>
                         <div style="display:flex; gap:0.5rem;">
@@ -299,5 +348,6 @@ if __name__ == '__main__':
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/pyodide_runner.js') }}"></script>
 <script src="{{ url_for('static', filename='js/exam.js') }}"></script>
 {% endblock %}

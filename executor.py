@@ -25,16 +25,20 @@ class CodeExecutor:
     def __init__(self, app=None):
         self.app = app
 
-    def _get_config(self):
+    def _get_config(self, needs_numpy: bool = False):
         backend = current_app.config.get('EXECUTOR', 'piston').lower()
-        url = current_app.config.get('EXECUTOR_URL', 'https://emkc.org/api/v2/piston/execute')
+        if needs_numpy and current_app.config.get('EXECUTOR_NUMPY_URL'):
+            url = current_app.config.get('EXECUTOR_NUMPY_URL')
+        else:
+            url = current_app.config.get('EXECUTOR_URL', 'https://emkc.org/api/v2/piston/execute')
         api_key = current_app.config.get('EXECUTOR_API_KEY', '')
         timeout = current_app.config.get('EXECUTOR_TIMEOUT', 10)
         return backend, url, api_key, timeout
 
-    def execute(self, code: str, language: str = 'python', stdin: str = '') -> dict:
+    def execute(self, code: str, language: str = 'python', stdin: str = '', needs_numpy: bool = False) -> dict:
         """
         Executes code on the configured sandbox service with a timeout.
+        If needs_numpy is True, routes to the dedicated numpy-enabled executor if configured.
         Returns a dict:
         {
             'stdout': str,
@@ -44,7 +48,7 @@ class CodeExecutor:
             'status': 'SUCCESS' | 'ERROR' | 'TIMEOUT' | 'NETWORK_ERROR'
         }
         """
-        backend, url, api_key, timeout = self._get_config()
+        backend, url, api_key, timeout = self._get_config(needs_numpy=needs_numpy)
 
         if backend == 'judge0':
             return self._execute_judge0(url, api_key, code, language, stdin, timeout)
@@ -193,7 +197,7 @@ class CodeExecutor:
                 'status': 'NETWORK_ERROR'
             }
 
-    def run_tests(self, code: str, language: str, test_cases: list) -> dict:
+    def run_tests(self, code: str, language: str, test_cases: list, needs_numpy: bool = False) -> dict:
         """
         Runs code against a suite of test cases.
         """
@@ -205,7 +209,7 @@ class CodeExecutor:
             test_in = str(tc.get('input', '')).rstrip('\r\n')
             expected_out = str(tc.get('output', '')).strip()
 
-            res = self.execute(code=code, language=language, stdin=test_in)
+            res = self.execute(code=code, language=language, stdin=test_in, needs_numpy=needs_numpy)
             actual_out = (res.get('stdout') or '').strip()
             total_time += res.get('time_ms', 0.0)
 

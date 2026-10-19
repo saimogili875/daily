@@ -141,6 +141,7 @@ class Question(db.Model):
     # Specific date this question is assigned to (in IST)
     exam_date = db.Column(db.Date, unique=True, nullable=True, index=True)
     is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
+    numpy_allowed = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     submissions = db.relationship('Submission', backref='question', lazy='dynamic', cascade='all, delete-orphan')

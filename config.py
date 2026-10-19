@@ -53,18 +53,22 @@ class Config:
     # Security & Time Window
     BYPASS_TIME_WINDOW = os.environ.get('BYPASS_TIME_WINDOW', 'false').lower() in ('true', '1')
     MAX_CODE_SIZE_BYTES = 10 * 1024  # 10 KB limit
-    ALLOWED_LANGUAGES = {'python', 'javascript', 'cpp', 'java'}
+    ALLOWED_LANGUAGES = {'python', 'javascript', 'cpp', 'java', 'python_pyodide'}
+
+    # Self-hosted / dedicated executor with numpy support if question needs numpy
+    EXECUTOR_NUMPY_URL = os.environ.get('EXECUTOR_NUMPY_URL', '')
 
     # Security Logging
     LOG_FILE = os.path.join(basedir, 'security.log')
 
-    # Content Security Policy for Talisman
+    # Content Security Policy for Talisman (supporting Pyodide WASM & Web Worker)
     CSP = {
         'default-src': ["'self'"],
         'script-src': [
             "'self'",
             "'unsafe-inline'",
             "'unsafe-eval'",
+            "'wasm-unsafe-eval'",
             "https://cdnjs.cloudflare.com",
             "https://cdn.jsdelivr.net",
         ],
@@ -98,6 +102,7 @@ class Config:
             "https://cdnjs.cloudflare.com",
             "https://cdn.jsdelivr.net",
             "https://emkc.org",
+            "https://ce.judge0.com",
         ],
     }
 
