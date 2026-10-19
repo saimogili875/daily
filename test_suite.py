@@ -326,6 +326,119 @@ if __name__ == '__main__':
         has_numpy = bool('numpy' in file_lower or 'np.' in file_lower or 'import numpy' in file_lower)
         self.assertTrue(has_numpy)
         print("✓ numpy_allowed attribute and study file keyword detection passed.")
+ 
+    def test_10_practice_mode_flow(self):
+        """Test complete Practice Mode lifecycle: window check, autosave, 10KB limit, 30s heartbeat streak at 20m, runner, and dashboard."""
+        import uuid
+        from models import PracticeSession
+
+        # 1. Test Window Enforcement: when off-hours and not bypassed, endpoints must block
+        self.app.config['BYPASS_TIME_WINDOW'] = False
+        user_name = f"prac_user_{uuid.uuid4().hex[:6]}"
+        self.client.post('/register', data={
+            'username': user_name,
+            'email': f'{user_name}@example.com',
+            'password': 'PracticeUser!2026',
+            'confirm_password': 'PracticeUser!2026'
+        })
+        self.client.post('/login', data={
+            'username': user_name,
+            'password': 'PracticeUser!2026'
+        })
+
+        # Outside window -> autosave, heartbeat, run return 403
+        save_resp = self.client.post('/practice/autosave', json={'code': 'print("hi")'})
+        self.assertEqual(save_resp.status_code, 403)
+
+        hb_resp = self.client.post('/practice/heartbeat')
+        self.assertEqual(hb_resp.status_code, 403)
+
+        run_resp = self.client.post('/practice/run', json={'code': 'print("hi")', 'language': 'python'})
+        self.assertEqual(run_resp.status_code, 403)
+
+        # 2. Enable Window (Bypass mode for testing)
+        self.app.config['BYPASS_TIME_WINDOW'] = True
+
+        # GET /practice creates or loads persistent session
+        get_resp = self.client.get('/practice')
+        self.assertEqual(get_resp.status_code, 200)
+        self.assertIn(b"Practice Workspace", get_resp.data)
+
+        user = User.query.filter_by(username=user_name).first()
+        today_ist = get_current_ist_date()
+        session_rec = PracticeSession.query.filter_by(user_id=user.id, session_date=today_ist).first()
+        self.assertIsNotNone(session_rec)
+        self.assertEqual(session_rec.minutes, 0)
+        self.assertEqual(len(session_rec.snippets), 1)
+
+        # 3. Test 10 KB Code Size Limit
+        oversized_code = "x = 1\n" * 2500  # > 12 KB
+        over_resp = self.client.post('/practice/autosave', json={
+            'code': oversized_code,
+            'topic': 'Testing limits'
+        })
+        self.assertEqual(over_resp.status_code, 400)
+        self.assertIn("exceeds", over_resp.get_json().get('error', '').lower())
+
+        # 4. Test Autosave with snippets array
+        test_snippets = [
+            {'id': 's1', 'title': 'Binary Search', 'language': 'python', 'code': 'def bs(): pass'},
+            {'id': 's2', 'title': 'Two Pointers', 'language': 'javascript', 'code': 'console.log(1);'}
+        ]
+        save_ok = self.client.post('/practice/autosave', json={
+            'code': test_snippets[0]['code'],
+            'topic': 'Search Algorithms',
+            'language': 'python',
+            'snippets': test_snippets
+        })
+        self.assertEqual(save_ok.status_code, 200)
+        self.assertEqual(save_ok.get_json().get('status'), 'saved')
+
+        # Verify in DB
+        db.session.refresh(session_rec)
+        self.assertEqual(session_rec.topic, 'Search Algorithms')
+        self.assertEqual(len(session_rec.snippets), 2)
+        self.assertEqual(session_rec.snippets[1]['title'], 'Two Pointers')
+
+        # 5. Test Code Runner (POST /practice/run)
+        run_ok = self.client.post('/practice/run', json={
+            'code': 'print("Hello from Practice Mode!")',
+            'language': 'python',
+            'stdin': ''
+        })
+        self.assertEqual(run_ok.status_code, 200)
+        run_data = run_ok.get_json()
+        self.assertIn("Hello from Practice Mode!", run_data.get('stdout', ''))
+        db.session.refresh(session_rec)
+        self.assertGreaterEqual(session_rec.run_count, 1)
+
+        # 6. Test Heartbeat Study Time & Streak Increment at 20 minutes
+        initial_streak = user.current_streak
+        # Simulate user already having 19 minutes and 30 seconds (39 heartbeats = 1170s)
+        session_rec.heartbeat_seconds = 1170
+        session_rec.minutes = 19
+        session_rec.last_heartbeat = None
+        db.session.commit()
+
+        # Send heartbeat -> increases to 1200 seconds = 20 minutes!
+        hb_ok = self.client.post('/practice/heartbeat')
+        self.assertEqual(hb_ok.status_code, 200)
+        hb_data = hb_ok.get_json()
+        self.assertEqual(hb_data.get('status'), 'ok')
+        self.assertEqual(hb_data.get('minutes'), 20)
+        self.assertTrue(hb_data.get('awarded_streak'))
+
+        db.session.refresh(user)
+        self.assertEqual(user.current_streak, initial_streak + 1)
+
+        # 7. Test Dashboard Rendering (today's minutes, weekly bar chart, snippet history)
+        dash_resp = self.client.get('/dashboard')
+        self.assertEqual(dash_resp.status_code, 200)
+        self.assertIn(b"Today's Practice", dash_resp.data)
+        self.assertIn(b"Weekly Study Time", dash_resp.data)
+        self.assertIn(b"Daily Practice Snippets History", dash_resp.data)
+        self.assertIn(b"Search Algorithms", dash_resp.data)
+        print("✓ Full Practice Mode flow: window check, autosave, 10KB limit, 20-min streak award, and dashboard passed.")
 
 if __name__ == '__main__':
     unittest.main()

@@ -35,6 +35,11 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ url_for('practice.practice_page') }}" class="nav-link {% if request.endpoint == 'practice.practice_page' %}active{% endif %}">
+                        <span>🧪 Practice</span>
+                    </a>
+                </li>
+                <li>
                     <a href="{{ url_for('dashboard.view_dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard.view_dashboard' %}active{% endif %}">
                         <span>📊 Dashboard</span>
                     </a>

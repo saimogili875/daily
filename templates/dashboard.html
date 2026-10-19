@@ -25,18 +25,74 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">✓</div>
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">⏱️</div>
         <div>
-            <div class="stat-val" style="color: #34d399;">{{ accepted_count }}/{{ total_submissions }}</div>
-            <div class="stat-label">Accepted Submissions</div>
+            <div class="stat-val" style="color: #34d399;">{{ today_practice_minutes }}m</div>
+            <div class="stat-label">Today's Practice (Goal: 20m)</div>
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">📊</div>
+        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">📚</div>
         <div>
-            <div class="stat-val" style="color: #60a5fa;">{{ avg_score }}%</div>
-            <div class="stat-label">Average Score</div>
+            <div class="stat-val" style="color: #818cf8;">{{ total_practice_hours }}h</div>
+            <div class="stat-label">Total Practice Hours</div>
         </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">✓</div>
+        <div>
+            <div class="stat-val" style="color: #60a5fa;">{{ accepted_count }}/{{ total_submissions }}</div>
+            <div class="stat-label">Accepted Exam Subs</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(236, 72, 153, 0.15); color: #f472b6;">📊</div>
+        <div>
+            <div class="stat-val" style="color: #f472b6;">{{ avg_score }}%</div>
+            <div class="stat-label">Average Exam Score</div>
+        </div>
+    </div>
+</div>
+
+<!-- Weekly Practice Bar Chart (Last 7 Days) -->
+<div class="glass-card" style="margin-bottom: 2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.5rem;">
+        <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700;">⏱️ Weekly Study Time (Last 7 Days)</h3>
+            <p style="font-size:0.85rem; color:var(--text-secondary);">Practice minutes recorded in the 9:00 - 10:00 PM IST window. 20+ minutes adds to your streak 🔥</p>
+        </div>
+        <div style="display:flex; gap:1.25rem; align-items:center; font-size:0.8rem; color:var(--text-secondary);">
+            <span style="display:inline-flex; align-items:center; gap:0.4rem;">
+                <span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#10b981;"></span>
+                <span>Streak Qualified (≥20m)</span>
+            </span>
+            <span style="display:inline-flex; align-items:center; gap:0.4rem;">
+                <span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#6366f1;"></span>
+                <span>In Progress (&lt;20m)</span>
+            </span>
+            <a href="{{ url_for('practice.practice_page') }}" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.65rem;">🧪 Go to Practice</a>
+        </div>
+    </div>
+
+    <!-- Bar Chart Container -->
+    <div style="display: flex; align-items: flex-end; justify-content: space-around; gap: 1rem; height: 180px; padding: 1.5rem 0 0.5rem 0; border-bottom: 1px dashed var(--border-color); position: relative;">
+        <!-- 20-min Target Line -->
+        <div style="position: absolute; left: 0; right: 0; bottom: calc(33.3% + 22px); border-top: 1px dashed rgba(16, 185, 129, 0.4); pointer-events: none; display: flex; justify-content: flex-end;">
+            <span style="font-size: 0.7rem; color: #34d399; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 4px; transform: translateY(-50%);">Goal: 20 mins</span>
+        </div>
+
+        {% for bar in weekly_practice %}
+        <div style="flex: 1; max-width: 65px; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; z-index: 1;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: {% if bar.target_met %}#34d399{% elif bar.minutes > 0 %}#a5b4fc{% else %}var(--text-muted){% endif %}; margin-bottom: 0.35rem;">
+                {{ bar.minutes }}m
+            </span>
+            <div style="width: 100%; border-radius: 6px 6px 2px 2px; height: {{ bar.pct }}%; background: {% if bar.target_met %}linear-gradient(180deg, #10b981 0%, #059669 100%){% elif bar.minutes > 0 %}linear-gradient(180deg, #6366f1 0%, #4f46e5 100%){% else %}rgba(255,255,255,0.06){% endif %}; box-shadow: {% if bar.target_met %}0 0 10px rgba(16, 185, 129, 0.35){% elif bar.minutes > 0 %}0 0 8px rgba(99, 102, 241, 0.25){% else %}none{% endif %}; transition: height 0.5s ease; min-height: 6px;" title="{{ bar.date }}: {{ bar.minutes }} minutes"></div>
+            <div style="margin-top: 0.5rem; text-align: center;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary);">{{ bar.day }}</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">{{ bar.date }}</div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
@@ -45,7 +101,7 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
             <h3 style="font-size: 1.15rem; font-weight: 700;">Daily Activity Heatmap</h3>
-            <p style="font-size:0.85rem; color:var(--text-secondary);">Last 120 days of exam submissions in IST</p>
+            <p style="font-size:0.85rem; color:var(--text-secondary);">Last 120 days combining Exam Submissions &amp; Qualifying Practice Sessions (≥20m)</p>
         </div>
         <div style="display:flex; gap:0.75rem; align-items:center; font-size:0.8rem; color:var(--text-secondary);">
             <span>Less</span>
@@ -60,12 +116,96 @@
         <div class="heatmap-grid" id="heatmap-grid">
             {% for day in heatmap_days %}
             <div 
-                class="heatmap-cell {% if day.submitted %}{% if day.status == 'Accepted' %}active-pass{% elif day.score > 0 %}active-partial{% else %}active-fail{% endif %}{% endif %}"
-                title="{{ day.display_date }}: {% if day.submitted %}{{ day.status }} (Score: {{ day.score }}%){% else %}No submission{% endif %}"
+                class="heatmap-cell {% if day.submitted %}{% if day.status == 'Accepted' or 'Practice' in day.status %}active-pass{% elif day.score > 0 %}active-partial{% else %}active-fail{% endif %}{% endif %}"
+                title="{{ day.display_date }}: {% if day.submitted %}{{ day.status }}{% else %}No activity{% endif %}"
             ></div>
             {% endfor %}
         </div>
     </div>
+</div>
+
+<!-- Practice Snippets History -->
+<div class="glass-card" style="margin-bottom: 2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem; flex-wrap:wrap; gap:0.5rem;">
+        <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700;">🧪 Daily Practice Snippets History</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Persistent daily practice logs, topics learned, study duration, and re-runnable snippets.</p>
+        </div>
+        <a href="{{ url_for('practice.practice_page') }}" class="btn btn-primary btn-sm">
+            <span>➕ Open Today's Practice</span>
+        </a>
+    </div>
+
+    {% if not practice_sessions %}
+        <div style="text-align: center; padding: 2.5rem; color: var(--text-secondary);">
+            <p>No practice sessions recorded yet. Open Practice Mode between 9:00 - 10:00 PM IST to start!</p>
+            <a href="{{ url_for('practice.practice_page') }}" class="btn btn-secondary btn-sm" style="margin-top: 0.75rem;">Launch Practice Mode</a>
+        </div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Date (IST)</th>
+                        <th>Topic / "What I Learned"</th>
+                        <th>Language</th>
+                        <th>Study Time</th>
+                        <th>Runs</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ps in practice_sessions %}
+                    <tr>
+                        <td style="font-family: var(--font-mono); font-size: 0.85rem;">{{ ps.session_date.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <strong>{{ ps.topic or 'Daily Practice' }}</strong>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">
+                                {{ ps.snippets|length }} snippet tab{{ 's' if ps.snippets|length != 1 else '' }} saved
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; text-transform:uppercase;">
+                                {{ ps.language }}
+                            </span>
+                        </td>
+                        <td>
+                            <strong style="color: {% if ps.minutes >= 20 %}#34d399{% else %}var(--text-primary){% endif %};">
+                                {{ ps.minutes }} mins
+                            </strong>
+                            {% if ps.minutes >= 20 %}
+                            <span style="font-size:0.75rem; color:#34d399;">(🔥 Streak +1)</span>
+                            {% else %}
+                            <span style="font-size:0.75rem; color:var(--text-muted);">(Goal: 20m)</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ps.run_count }}</td>
+                        <td>
+                            <div style="display:flex; gap:0.4rem;">
+                                <button 
+                                    type="button" 
+                                    class="btn btn-secondary btn-sm btn-view-practice" 
+                                    data-date="{{ ps.session_date.strftime('%b %d, %Y') }}"
+                                    data-topic="{{ ps.topic|e }}"
+                                    data-language="{{ ps.language }}"
+                                    data-minutes="{{ ps.minutes }}"
+                                    data-runs="{{ ps.run_count }}"
+                                    data-snippets="{{ ps._snippets|e }}"
+                                    data-code="{{ ps.code|e }}"
+                                >
+                                    🔍 View Snippets
+                                </button>
+                                <a href="{{ url_for('practice.practice_page') }}" class="btn btn-primary btn-sm" title="Open workspace">
+                                    ▶ Workspace
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
 </div>
 
 <!-- Two Columns: History & Leaderboard -->
@@ -171,7 +311,7 @@
     </div>
 </div>
 
-<!-- Code Details Modal -->
+<!-- Exam Code Details Modal -->
 <div id="code-view-modal" class="modal-overlay">
     <div class="modal-box" style="max-width: 800px;">
         <div class="modal-header">
@@ -191,15 +331,73 @@
         </div>
     </div>
 </div>
+
+<!-- Practice Snippets & Re-Run Modal -->
+<div id="practice-view-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 850px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="practice-modal-topic" style="font-size: 1.25rem; font-weight: 700;">Daily Practice Snippet</h3>
+                <div id="practice-modal-meta" style="font-size:0.8rem; color:var(--text-secondary); margin-top: 0.2rem;"></div>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="document.getElementById('practice-view-modal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Tabs for multi-snippets -->
+            <div id="practice-modal-tabs" style="display: flex; gap: 0.35rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; overflow-x: auto;">
+            </div>
+
+            <!-- Code Viewer -->
+            <div style="position: relative; margin-bottom: 1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#161b22; padding:0.4rem 0.8rem; border-radius:var(--radius-md) var(--radius-md) 0 0; border:1px solid var(--border-color); border-bottom:none;">
+                    <span id="practice-snippet-lang-tag" class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; text-transform:uppercase;">PYTHON</span>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-practice-code" style="padding:0.2rem 0.5rem; font-size:0.75rem;">📋 Copy</button>
+                </div>
+                <pre id="practice-modal-code" style="background:#0d1117; color:#e6edf3; padding:1rem; border-radius: 0 0 var(--radius-md) var(--radius-md); border:1px solid var(--border-color); font-family:var(--font-mono); font-size:0.85rem; overflow-x:auto; max-height:300px; white-space:pre-wrap; margin:0;"></pre>
+            </div>
+
+            <!-- Custom STDIN Box -->
+            <div style="margin-bottom: 1rem;">
+                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.35rem;">Custom STDIN (for re-running):</label>
+                <textarea id="practice-modal-stdin" class="form-control" style="font-family:var(--font-mono); font-size:0.85rem; height:60px; background:rgba(0,0,0,0.2);" placeholder="Optional custom stdin input for snippet..."></textarea>
+            </div>
+
+            <!-- Re-Run Terminal Output -->
+            <div id="practice-modal-terminal-box" style="display:none; margin-bottom:1rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                    <span style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Execution Output</span>
+                    <span id="practice-modal-status-badge" class="badge badge-easy">READY</span>
+                </div>
+                <pre id="practice-modal-stdout" style="background:#090d13; color:#34d399; padding:0.85rem; border-radius:var(--radius-md); border:1px solid rgba(16,185,129,0.3); font-family:var(--font-mono); font-size:0.85rem; max-height:160px; overflow-y:auto; white-space:pre-wrap;"></pre>
+            </div>
+
+            <!-- Action Controls -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; border-top:1px solid var(--border-color); padding-top:1rem;">
+                <span id="practice-modal-window-note" style="font-size:0.8rem; color:var(--text-muted);">
+                    Server enforces 9:00 - 10:00 PM IST window for execution.
+                </span>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="button" id="btn-modal-rerun-code" class="btn btn-primary btn-sm">
+                        <span>▶ Re-run Snippet</span>
+                    </button>
+                    <a href="{{ url_for('practice.practice_page') }}" class="btn btn-secondary btn-sm">
+                        <span>🧪 Open Practice Mode</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('code-view-modal');
-    const buttons = document.querySelectorAll('.btn-view-code');
+    // Exam Submissions Modal
+    const codeModal = document.getElementById('code-view-modal');
+    const examButtons = document.querySelectorAll('.btn-view-code');
 
-    buttons.forEach(btn => {
+    examButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             document.getElementById('modal-code-title').textContent = this.dataset.title;
             document.getElementById('modal-code-date').textContent = `${this.dataset.date} • Score: ${this.dataset.score}%`;
@@ -214,13 +412,158 @@ document.addEventListener('DOMContentLoaded', function() {
                 feedbackBox.style.display = 'none';
             }
 
-            modal.classList.add('active');
+            codeModal.classList.add('active');
         });
     });
 
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) modal.classList.remove('active');
+    if (codeModal) {
+        codeModal.addEventListener('click', function(e) {
+            if (e.target === codeModal) codeModal.classList.remove('active');
+        });
+    }
+
+    // Practice Snippets Modal & Re-Run Handler
+    const practiceModal = document.getElementById('practice-view-modal');
+    const practiceButtons = document.querySelectorAll('.btn-view-practice');
+    let currentModalSnippets = [];
+    let activeSnippetIndex = 0;
+    let currentSessionLanguage = 'python';
+
+    practiceButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const date = this.dataset.date;
+            const topic = this.dataset.topic || 'Daily Practice';
+            currentSessionLanguage = this.dataset.language || 'python';
+            const minutes = this.dataset.minutes || '0';
+            const runs = this.dataset.runs || '0';
+            const rawSnippets = this.dataset.snippets;
+            const fallbackCode = this.dataset.code || '';
+
+            document.getElementById('practice-modal-topic').textContent = topic;
+            document.getElementById('practice-modal-meta').textContent = `${date} • ${minutes} mins study time • ${runs} runs`;
+            document.getElementById('practice-modal-terminal-box').style.display = 'none';
+
+            try {
+                currentModalSnippets = rawSnippets ? JSON.parse(rawSnippets) : [];
+            } catch (e) {
+                currentModalSnippets = [];
+            }
+
+            if (!currentModalSnippets || currentModalSnippets.length === 0) {
+                currentModalSnippets = [{
+                    id: 'snip_0',
+                    title: 'Main Snippet',
+                    language: currentSessionLanguage,
+                    code: fallbackCode
+                }];
+            }
+
+            renderPracticeModalTabs();
+            selectModalSnippet(0);
+            practiceModal.classList.add('active');
+        });
     });
+
+    function renderPracticeModalTabs() {
+        const tabsContainer = document.getElementById('practice-modal-tabs');
+        tabsContainer.innerHTML = '';
+
+        currentModalSnippets.forEach((snip, index) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-sm ${index === activeSnippetIndex ? 'btn-primary' : 'btn-secondary'}`;
+            btn.style.fontSize = '0.8rem';
+            btn.textContent = snip.title || `Snippet ${index + 1}`;
+            btn.addEventListener('click', () => selectModalSnippet(index));
+            tabsContainer.appendChild(btn);
+        });
+    }
+
+    function selectModalSnippet(index) {
+        activeSnippetIndex = index;
+        const snip = currentModalSnippets[index] || currentModalSnippets[0];
+        const codeElem = document.getElementById('practice-modal-code');
+        const langTag = document.getElementById('practice-snippet-lang-tag');
+
+        codeElem.textContent = snip.code || '# Empty snippet';
+        langTag.textContent = (snip.language || currentSessionLanguage).toUpperCase();
+        renderPracticeModalTabs();
+    }
+
+    // Copy Code Button
+    const copyBtn = document.getElementById('btn-copy-practice-code');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            const code = document.getElementById('practice-modal-code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                copyBtn.textContent = '✓ Copied!';
+                setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 2000);
+            });
+        });
+    }
+
+    // Re-run Button inside modal
+    const rerunBtn = document.getElementById('btn-modal-rerun-code');
+    if (rerunBtn) {
+        rerunBtn.addEventListener('click', async function() {
+            const snip = currentModalSnippets[activeSnippetIndex] || currentModalSnippets[0];
+            const code = snip ? snip.code : document.getElementById('practice-modal-code').textContent;
+            const language = (snip && snip.language) ? snip.language : currentSessionLanguage;
+            const stdin = document.getElementById('practice-modal-stdin').value;
+
+            const terminalBox = document.getElementById('practice-modal-terminal-box');
+            const stdoutElem = document.getElementById('practice-modal-stdout');
+            const statusBadge = document.getElementById('practice-modal-status-badge');
+
+            terminalBox.style.display = 'block';
+            statusBadge.className = 'badge';
+            statusBadge.style.background = 'rgba(245, 158, 11, 0.2)';
+            statusBadge.style.color = '#fbbf24';
+            statusBadge.textContent = 'RUNNING...';
+            stdoutElem.textContent = 'Sending snippet to execution sandbox...';
+
+            rerunBtn.disabled = true;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const resp = await fetch('/practice/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ code, language, stdin })
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    statusBadge.className = 'badge badge-hard';
+                    statusBadge.textContent = 'ERROR';
+                    stdoutElem.style.color = '#f87171';
+                    stdoutElem.textContent = data.error || `HTTP ${resp.status} Execution failed.`;
+                } else {
+                    statusBadge.className = data.exit_code === 0 ? 'badge badge-easy' : 'badge badge-hard';
+                    statusBadge.textContent = data.exit_code === 0 ? 'SUCCESS' : `EXIT ${data.exit_code}`;
+                    stdoutElem.style.color = data.exit_code === 0 ? '#34d399' : '#f87171';
+                    stdoutElem.textContent = (data.stdout || '') + (data.stderr ? '\n[STDERR]\n' + data.stderr : '') || '(Execution completed with no standard output)';
+                }
+            } catch (err) {
+                statusBadge.className = 'badge badge-hard';
+                statusBadge.textContent = 'ERROR';
+                stdoutElem.style.color = '#f87171';
+                stdoutElem.textContent = 'Network or client error: ' + err.message;
+            } finally {
+                rerunBtn.disabled = false;
+            }
+        });
+    }
+
+    if (practiceModal) {
+        practiceModal.addEventListener('click', function(e) {
+            if (e.target === practiceModal) practiceModal.classList.remove('active');
+        });
+    }
 });
 </script>
 {% endblock %}

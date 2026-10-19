@@ -18,6 +18,7 @@ from seed import seed_database
 from auth import auth_bp
 from exam import exam_bp, trigger_groq_question_generation
 from dashboard import dashboard_bp
+from practice import practice_bp
 
 # Initialize extensions
 login_manager = LoginManager()
@@ -78,16 +79,19 @@ def create_app(config_name=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(exam_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(practice_bp)
 
     # Apply strict endpoint-specific rate limiting
     # Register: 3/hour per IP
     limiter.limit("3 per hour", key_func=get_remote_address)(app.view_functions['auth.register'])
     # Login: 5/minute per IP
     limiter.limit("5 per minute", key_func=get_remote_address)(app.view_functions['auth.login'])
-    # Run: 10/min per user
+    # Exam Run: 10/min per user
     limiter.limit("10 per minute", key_func=get_limiter_key)(app.view_functions['exam.run_code'])
-    # Submit: 5/min per user
+    # Exam Submit: 5/min per user
     limiter.limit("5 per minute", key_func=get_limiter_key)(app.view_functions['exam.submit_exam'])
+    # Practice Run: 20/min per user
+    limiter.limit("20 per minute", key_func=get_limiter_key)(app.view_functions['practice.run_practice_code'])
 
     # Single Active Session Check & Session Verification
     @login_manager.user_loader

@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Practice Mode{% endblock %}
+
+{% block extra_head %}
+<!-- Monaco Editor AMD Loader from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+<style>
+/* Practice Mode Specific Styling */
+.practice-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding: 1rem 1.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+}
+
+.practice-study-clock {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius-md);
+    color: #34d399;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.snippet-tabs-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.35);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.25rem 0.5rem;
+    overflow-x: auto;
+    gap: 0.25rem;
+}
+
+.snippet-tab-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.snippet-tab-pill:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.snippet-tab-pill.active {
+    color: var(--brand-blue);
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    font-weight: 600;
+}
+
+.snippet-tab-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0 0.1rem;
+    line-height: 1;
+}
+
+.snippet-tab-close:hover {
+    color: var(--danger);
+}
+
+.btn-new-snippet {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-new-snippet:hover {
+    color: var(--text-primary);
+    border-color: var(--brand-blue);
+}
+
+.study-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.study-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981 0%, #3b82f6 100%);
+    transition: width 0.3s ease;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Practice Mode Header Bar -->
+<div class="practice-header-bar">
+    <div style="flex:1; min-width:280px; margin-right:1rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;">
+            <h2 style="font-size:1.35rem; font-weight:800; letter-spacing:-0.5px;">🧪 Practice Workspace</h2>
+            <span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                9:00 - 10:00 PM IST
+            </span>
+            <span id="autosave-indicator" style="font-size:0.75rem; color:var(--text-muted);">
+                ✓ Saved
+            </span>
+        </div>
+        <!-- Topic / What I Learned Today Box -->
+        <input 
+            type="text" 
+            id="practice-topic-input" 
+            class="form-control" 
+            placeholder="Topic: What I learned today (e.g. Dynamic Programming memoization, NumPy matrix math)..."
+            value="{{ practice_session.topic }}"
+            style="font-size:0.9rem; padding:0.45rem 0.75rem; background:rgba(0,0,0,0.25);"
+        >
+    </div>
+
+    <!-- Right Controls: Study Clock & Window Countdown -->
+    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+        <!-- Study Time Heartbeat Tracker -->
+        <div class="practice-study-clock" id="study-time-container" title="Active Study Time (Send heartbeat every 30s. 20+ mins = Streak +1)">
+            <span>⏱️ Study Time:</span>
+            <span id="practice-minutes-display" style="font-family:var(--font-mono); font-weight:700;">{{ practice_session.minutes }}m</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">(Goal: 20m 🔥)</span>
+        </div>
+
+        <!-- Window Countdown -->
+        <div class="timer-box" title="Practice window closes at 10:00 PM IST">
+            <span>⌛</span>
+            <span id="exam-countdown" data-seconds-left="{{ window_info.seconds_left }}">00:00:00</span>
+            <span style="font-size:0.75rem; color:var(--text-secondary);">Left</span>
+        </div>
+    </div>
+</div>
+
+<!-- Main Workspace Layout -->
+<div class="exam-layout" style="grid-template-columns: 1fr; height: calc(100vh - 180px); min-height: 600px;">
+    <section class="compiler-panel" style="height:100%;">
+        <!-- Top Toolbar with Language Selector & Snippet Actions -->
+        <div class="compiler-topbar">
+            <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <label for="select-language" style="font-size:0.85rem; color:var(--text-secondary); font-weight:600;">Language:</label>
+                <select id="select-language" class="form-control" style="width:auto; padding:0.3rem 0.6rem; font-size:0.85rem;">
+                    <option value="python" {% if practice_session.language == 'python' %}selected{% endif %}>Python 3 (Sandbox)</option>
+                    <option value="python_pyodide" {% if practice_session.language == 'python_pyodide' %}selected{% endif %}>Python (Browser, numpy)</option>
+                    <option value="javascript" {% if practice_session.language == 'javascript' %}selected{% endif %}>JavaScript (Node.js)</option>
+                    <option value="cpp" {% if practice_session.language == 'cpp' %}selected{% endif %}>C++ (GCC)</option>
+                    <option value="java" {% if practice_session.language == 'java' %}selected{% endif %}>Java (OpenJDK)</option>
+                </select>
+
+                <span id="pyodide-engine-badge" class="badge" style="{% if practice_session.language != 'python_pyodide' %}display:none;{% endif %} background:rgba(139,92,246,0.2); color:#a78bfa; border:1px solid rgba(139,92,246,0.3);">
+                    Pyodide WebWorker
+                </span>
+
+                <span id="code-size-counter" class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">
+                    0.0 KB / 10 KB
+                </span>
+
+                <span id="run-count-badge" class="badge" style="background:rgba(16,185,129,0.15); color:#34d399;">
+                    Runs: {{ practice_session.run_count }}
+                </span>
+            </div>
+
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+                <button type="button" id="btn-save-practice" class="btn btn-secondary btn-sm" title="Autosaves every 10s">
+                    <span>💾 Save</span>
+                </button>
+                <button type="button" id="btn-add-snippet" class="btn btn-secondary btn-sm" title="Add a new snippet tab in today's session">
+                    <span>➕ New Snippet</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Multi-Snippet Tab Bar -->
+        <div class="snippet-tabs-bar" id="snippet-tabs-bar">
+            <!-- Dynamic Snippet Tabs rendered here -->
+        </div>
+
+        <!-- Monaco Editor Container -->
+        <div 
+            id="monaco-editor-container" 
+            class="monaco-container"
+            data-initial-code="{{ practice_session.code|e }}"
+            data-snippets="{{ practice_session._snippets|e }}"
+            data-current-lang="{{ practice_session.language }}"
+            style="flex: 1;"
+        ></div>
+
+        <!-- Interactive Console & Pyodide File System -->
+        <div class="console-section" style="height: 240px;">
+            <div class="console-tabs">
+                <button type="button" class="console-tab-btn active" data-tab="output">
+                    <span>💻 Terminal Output</span>
+                </button>
+                <button type="button" class="console-tab-btn" data-tab="stdin">
+                    <span>⌨️ Custom STDIN</span>
+                </button>
+                <button type="button" class="console-tab-btn" data-tab="files" id="tab-btn-files">
+                    <span>📁 Virtual Files (FS)</span>
+                </button>
+            </div>
+
+            <!-- Terminal Output Tab -->
+            <div id="tab-output" class="console-tab-content console-tab-pane">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                    <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Console Stream</span>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <span id="terminal-engine-label" style="font-size:0.75rem; color:var(--text-muted);">
+                            {% if practice_session.language == 'python_pyodide' %}Pyodide (Worker){% else %}Backend Sandbox{% endif %}
+                        </span>
+                        <span id="terminal-time-badge" class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">0 ms</span>
+                        <span id="terminal-status-badge" class="badge badge-easy">READY</span>
+                    </div>
+                </div>
+                <pre id="terminal-stdout" class="console-terminal">Click "Run Code" to execute snippet in sandbox.</pre>
+            </div>
+
+            <!-- STDIN Tab -->
+            <div id="tab-stdin" class="console-tab-content console-tab-pane" style="display:none;">
+                <textarea 
+                    id="stdin-textarea" 
+                    class="console-stdin-input" 
+                    placeholder="Enter standard input here for your practice code (sys.stdin.read or input)..."
+                ></textarea>
+            </div>
+
+            <!-- Virtual Files Tab (Pyodide FS) -->
+            <div id="tab-files" class="console-tab-content console-tab-pane" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                    <div style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">
+                        Pyodide In-Browser Virtual Files (<code>open('filename', 'w')</code>)
+                    </div>
+                    <div style="display:flex; gap:0.75rem; align-items:center;">
+                        <label style="font-size:0.8rem; color:var(--text-muted); display:flex; align-items:center; gap:0.3rem; cursor:pointer;">
+                            <input type="checkbox" id="fs-clear-on-run"> Clear FS on each Run
+                        </label>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-create-fs-file">+ New File</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-fs">↻ Refresh</button>
+                    </div>
+                </div>
+                <div id="fs-file-list" style="font-size:0.85rem;">
+                    <div style="color:var(--text-muted); font-size:0.85rem;">No files created in virtual filesystem yet. Use <code>open('data.txt', 'w')</code> or click "+ New File".</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="compiler-action-bar">
+            <div>
+                <span id="status-streak-pill" style="font-size:0.8rem; color:var(--text-muted);">
+                    🔥 Study time adds to daily streak (20+ mins).
+                </span>
+            </div>
+            <div style="display:flex; gap:0.75rem;">
+                <button type="button" id="btn-run-code" class="btn btn-primary" title="Execute in sandbox (20 runs/min)">
+                    <span>▶ Run Code</span>
+                </button>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pyodide_runner.js') }}"></script>
+<script src="{{ url_for('static', filename='js/practice.js') }}"></script>
+{% endblock %}

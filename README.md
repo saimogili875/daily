@@ -10,6 +10,20 @@ A production-ready, highly secure Flask web platform for daily timed algorithmic
   - Exam access and run/submit operations open **strictly from 9:00 PM to 10:00 PM IST (Asia/Kolkata)**.
   - Server time is calculated using `pytz` (never trusts client system clocks).
   - Outside the window, a live countdown ticks down to the next 9:00 PM IST, and `/exam/run` + `/exam/submit` endpoints reject requests with HTTP 403.
+- **🧪 Daily Practice Mode (9:00 PM - 10:00 PM IST)**:
+  - **Strict Server Time Window**: Open only during the 9:00 - 10:00 PM IST window (enforced on workspace, autosave, heartbeat, and code run).
+  - **Persistent Daily Editor**: One persistent session per day with Monaco editor, "What I learned today" topic header, and custom STDIN box.
+  - **Multi-Language Support**: Python 3 (Sandbox), Python (Browser, numpy via Pyodide WebWorker), JavaScript (Node.js), C++ (GCC), and Java (OpenJDK).
+  - **Multi-Snippet Tabs**: "New Snippet" button adds and switches between multiple snippet tabs within the same day's session.
+  - **10-Second Autosave**: Automatically persists code, tabs array, language, and topic every 10 seconds.
+  - **Study Time Heartbeat & Streak Qualification**:
+    - Timer starts upon entering the workspace.
+    - Dispatches a heartbeat every 30 seconds (flooding protected, only counts minutes inside the 9-10 PM window).
+    - **Earning Streak**: Practicing for at least 20 minutes (`minutes >= 20`) automatically awards a daily streak (+1)!
+  - **Rate Limits & Size Controls**: 20 code runs per minute per user, 10 KB code limit, and full CSRF verification.
+  - **Dashboard Analytics & Re-Run**:
+    - Displays today's study minutes, total study hours, and a 7-day weekly bar chart with 20-minute goal threshold.
+    - Snippet history table with detailed code viewer, multi-snippet inspection, copy button, and a live re-run terminal.
 - **Embedded Python Online Compiler & Pyodide WebWorker**:
   - Monaco Editor (VS Code core) loaded via CDN with dark mode syntax highlighting, auto-indentation, and line numbers.
   - Interactive online compiler console supporting **Custom STDIN**, real-time STDOUT/STDERR stream output, exit code, and execution runtime in milliseconds.
@@ -52,10 +66,11 @@ A production-ready, highly secure Flask web platform for daily timed algorithmic
 daily-code-exam/
 ├── app.py                     # Application factory, extensions, scheduler, rate limits
 ├── config.py                  # Environment-driven configuration and CSP
-├── models.py                  # SQLAlchemy ORM (User, Question, Submission, LoginAttempt, Upload)
+├── models.py                  # SQLAlchemy ORM (User, Question, Submission, PracticeSession, LoginAttempt, Upload)
 ├── auth.py                    # Secure authentication, lockout, single-session logic
 ├── exam.py                    # Exam page, online compiler run, submit, time-window logic
-├── dashboard.py               # Heatmap generation, streak tracker, leaderboard
+├── practice.py                # Practice mode (9-10 PM window, autosave, 30s heartbeat, multi-language runner)
+├── dashboard.py               # Heatmap generation, weekly practice bar chart, streak tracker, leaderboard
 ├── executor.py                # External sandbox execution client (Piston / Judge0)
 ├── groq_client.py             # Groq AI question generator, text extractor, and evaluator
 ├── seed.py                    # Database seeding (30 algorithmic Python questions + admin)
@@ -65,7 +80,8 @@ daily-code-exam/
 │   ├── register.html          # Registration with password complexity validator
 │   ├── change_password.html   # Password change form
 │   ├── exam.html              # Monaco editor + Python online compiler workspace
-│   ├── dashboard.html         # Activity heatmap, streak metrics, history, leaderboard
+│   ├── practice.html          # Practice mode workspace (multi-tab snippets, STDIN, Pyodide FS)
+│   ├── dashboard.html         # Activity heatmap, weekly practice chart, snippet history, leaderboard
 │   ├── closed.html            # Off-hours countdown clock to 9:00 PM IST
 │   ├── admin_upload.html      # Study material upload and Groq trigger
 │   ├── admin_submissions.html # Global submissions inspector
@@ -77,7 +93,9 @@ daily-code-exam/
 │   ├── css/
 │   │   └── style.css          # Responsive dark/light design system
 │   └── js/
-│       └── exam.js            # Monaco setup, online compiler console, countdown
+│       ├── exam.js            # Monaco setup, online compiler console, countdown
+│       ├── practice.js        # Practice mode tabs, 10s autosave, 30s heartbeat timer, code runner
+│       └── pyodide_runner.js  # Background WebWorker running Pyodide with virtual file system
 ├── requirements.txt           # Python dependencies
 ├── .env.example               # Environment variables template
 ├── .gitignore                 # Git ignore rules

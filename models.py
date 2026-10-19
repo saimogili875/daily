@@ -38,6 +38,7 @@ class User(UserMixin, db.Model):
 
     # Relationships
     submissions = db.relationship('Submission', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    practice_sessions = db.relationship('PracticeSession', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     def generate_session_token(self):
         """Generates a unique session token to enforce a single active session."""
@@ -221,3 +222,65 @@ class Upload(db.Model):
     upload_date = db.Column(db.Date, nullable=False, default=get_current_ist_date, index=True)
     uploaded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     used_for_generation = db.Column(db.Boolean, default=False, nullable=False)
+
+
+class PracticeSession(db.Model):
+    __tablename__ = 'practice_sessions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    session_date = db.Column(db.Date, nullable=False, index=True)  # IST date
+    
+    topic = db.Column(db.String(255), default='Daily Coding Practice', nullable=False)
+    language = db.Column(db.String(30), default='python', nullable=False)
+    code = db.Column(db.Text, default='', nullable=False)
+    _snippets = db.Column('snippets', db.Text, default='[]', nullable=False)
+    
+    # Study time tracking
+    minutes = db.Column(db.Integer, default=0, nullable=False)
+    heartbeat_seconds = db.Column(db.Integer, default=0, nullable=False)
+    run_count = db.Column(db.Integer, default=0, nullable=False)
+    last_heartbeat = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Unique constraint: exactly ONE practice session per user per day
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'session_date', name='uq_user_daily_practice'),
+    )
+
+    @property
+    def snippets(self):
+        try:
+            return json.loads(self._snippets) if self._snippets else []
+        except (ValueError, TypeError):
+            return []
+
+    @snippets.setter
+    def snippets(self, value):
+        self._snippets = json.dumps(value) if isinstance(value, (list, dict)) else str(value)
+
+    def record_heartbeat(self):
+        """
+        Records a 30-second heartbeat of active study time.
+        Calculates accumulated minutes and checks for streak eligibility (at least 20 minutes = streak +1).
+        """
+        now_utc = datetime.now(timezone.utc)
+        self.heartbeat_seconds += 30
+        self.minutes = self.heartbeat_seconds // 60
+        self.last_heartbeat = now_utc
+
+        awarded_streak = False
+        if self.minutes >= 20:
+            # Check if streak already updated today
+            if self.user and self.user.last_submission_date != self.session_date:
+                self.user.update_streak(self.session_date)
+                awarded_streak = True
+
+        return {
+            'minutes': self.minutes,
+            'total_seconds': self.heartbeat_seconds,
+            'awarded_streak': awarded_streak,
+            'streak': self.user.current_streak if self.user else 0
+        }
