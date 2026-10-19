@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}User Dashboard &amp; Analytics{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; font-weight: 800; letter-spacing: -0.5px;">Candidate Dashboard</h1>
+    <p style="color: var(--text-secondary); font-size: 0.95rem;">Track your daily coding consistency, streak heatmap, and problem history.</p>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">🔥</div>
+        <div>
+            <div class="stat-val" style="color: #fbbf24;">{{ current_user.current_streak }}</div>
+            <div class="stat-label">Current Streak (Days)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">🏆</div>
+        <div>
+            <div class="stat-val" style="color: #a78bfa;">{{ current_user.longest_streak }}</div>
+            <div class="stat-label">Longest Streak (Days)</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">✓</div>
+        <div>
+            <div class="stat-val" style="color: #34d399;">{{ accepted_count }}/{{ total_submissions }}</div>
+            <div class="stat-label">Accepted Submissions</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">📊</div>
+        <div>
+            <div class="stat-val" style="color: #60a5fa;">{{ avg_score }}%</div>
+            <div class="stat-label">Average Score</div>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Heatmap Section -->
+<div class="glass-card" style="margin-bottom: 2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+        <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700;">Daily Activity Heatmap</h3>
+            <p style="font-size:0.85rem; color:var(--text-secondary);">Last 120 days of exam submissions in IST</p>
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:center; font-size:0.8rem; color:var(--text-secondary);">
+            <span>Less</span>
+            <span style="display:inline-block; width:12px; height:12px; border-radius:2px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);"></span>
+            <span style="display:inline-block; width:12px; height:12px; border-radius:2px; background:#f59e0b;"></span>
+            <span style="display:inline-block; width:12px; height:12px; border-radius:2px; background:#10b981;"></span>
+            <span>More</span>
+        </div>
+    </div>
+
+    <div class="heatmap-container">
+        <div class="heatmap-grid" id="heatmap-grid">
+            {% for day in heatmap_days %}
+            <div 
+                class="heatmap-cell {% if day.submitted %}{% if day.status == 'Accepted' %}active-pass{% elif day.score > 0 %}active-partial{% else %}active-fail{% endif %}{% endif %}"
+                title="{{ day.display_date }}: {% if day.submitted %}{{ day.status }} (Score: {{ day.score }}%){% else %}No submission{% endif %}"
+            ></div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Two Columns: History & Leaderboard -->
+<div style="display:grid; grid-template-columns: 62% 38%; gap: 1.5rem; align-items: start;">
+    <!-- Submission History -->
+    <div class="glass-card">
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">Submission History</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Past exam attempts and performance logs.</p>
+
+        {% if not submissions %}
+            <div style="text-align: center; padding: 2.5rem; color: var(--text-secondary);">
+                <p>No submissions recorded yet.</p>
+                <a href="{{ url_for('exam.exam_page') }}" class="btn btn-primary btn-sm" style="margin-top: 0.75rem;">Take Today's Exam</a>
+            </div>
+        {% else %}
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Date (IST)</th>
+                            <th>Question</th>
+                            <th>Status</th>
+                            <th>Score</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in submissions %}
+                        <tr>
+                            <td style="font-family: var(--font-mono); font-size: 0.85rem;">{{ sub.submission_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <strong>{{ sub.question.title }}</strong>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">{{ sub.question.topic }}</div>
+                            </td>
+                            <td>
+                                <span class="badge {% if sub.status == 'Accepted' %}badge-easy{% else %}badge-hard{% endif %}">
+                                    {{ sub.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{{ sub.score }}%</strong>
+                                <div style="font-size:0.75rem; color:var(--text-muted);">{{ sub.passed_test_cases }}/{{ sub.total_test_cases }} Tests</div>
+                            </td>
+                            <td>
+                                <button 
+                                    type="button" 
+                                    class="btn btn-secondary btn-sm btn-view-code" 
+                                    data-code="{{ sub.code|e }}"
+                                    data-title="{{ sub.question.title|e }}"
+                                    data-date="{{ sub.submission_date.strftime('%b %d, %Y') }}"
+                                    data-score="{{ sub.score }}"
+                                    data-feedback="{{ sub.ai_feedback|e }}"
+                                >
+                                    View
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Leaderboard by Streak -->
+    <div class="glass-card">
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">🔥 Streak Leaderboard</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">Top active coders ranked by consecutive daily submissions.</p>
+
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>User</th>
+                        <th style="text-align: right;">Streak</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in leaderboard %}
+                    <tr {% if user.id == current_user.id %}style="background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--brand-blue);"{% endif %}>
+                        <td style="font-weight: 700; color: var(--text-muted);">
+                            {% if loop.index == 1 %}🥇
+                            {% elif loop.index == 2 %}🥈
+                            {% elif loop.index == 3 %}🥉
+                            {% else %}#{{ loop.index }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ user.username }}</strong>
+                            {% if user.id == current_user.id %}
+                                <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 0.7rem;">You</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #fbbf24;">
+                            {{ user.current_streak }}d <span style="font-size:0.75rem; color:var(--text-muted);">(Max: {{ user.longest_streak }}d)</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Code Details Modal -->
+<div id="code-view-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 800px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="modal-code-title">Submitted Solution</h3>
+                <span id="modal-code-date" style="font-size:0.8rem; color:var(--text-secondary);"></span>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="document.getElementById('code-view-modal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-feedback-box" style="display:none; margin-bottom:1rem; padding:0.75rem 1rem; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:var(--radius-md);">
+                <div style="font-size:0.8rem; font-weight:700; color:#a78bfa; margin-bottom:0.25rem;">🤖 AI Evaluation:</div>
+                <div id="modal-feedback-text" style="font-size:0.85rem;"></div>
+            </div>
+
+            <pre id="modal-code-content" style="background:#0d1117; color:#e6edf3; padding:1rem; border-radius:var(--radius-md); font-family:var(--font-mono); font-size:0.85rem; overflow-x:auto; max-height:400px; white-space:pre-wrap;"></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('code-view-modal');
+    const buttons = document.querySelectorAll('.btn-view-code');
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('modal-code-title').textContent = this.dataset.title;
+            document.getElementById('modal-code-date').textContent = `${this.dataset.date} • Score: ${this.dataset.score}%`;
+            document.getElementById('modal-code-content').textContent = this.dataset.code;
+
+            const feedback = this.dataset.feedback;
+            const feedbackBox = document.getElementById('modal-feedback-box');
+            if (feedback && feedback.trim()) {
+                document.getElementById('modal-feedback-text').textContent = feedback;
+                feedbackBox.style.display = 'block';
+            } else {
+                feedbackBox.style.display = 'none';
+            }
+
+            modal.classList.add('active');
+        });
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.classList.remove('active');
+    });
+});
+</script>
+{% endblock %}

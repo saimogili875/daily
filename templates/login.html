@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Welcome Back</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Sign in to enter the Daily Code Exam arena</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="username" class="form-label">Username or Email</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-control" 
+                    placeholder="Enter your username or email" 
+                    required 
+                    autofocus
+                    autocomplete="username"
+                >
+            </div>
+
+            <div class="form-group">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label for="password" class="form-label">Password</label>
+                </div>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-control" 
+                    placeholder="Enter your password" 
+                    required 
+                    autocomplete="current-password"
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                Sign In to Exam
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Don't have an account? 
+            <a href="{{ url_for('auth.register') }}">Create an account</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}429 - Rate Limit Exceeded{% endblock %}
+
+{% block content %}
+<div class="closed-wrapper">
+    <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">⏱️</div>
+    <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">429 - Too Many Requests</h1>
+    <p style="color: var(--text-secondary); max-width: 520px; margin-bottom: 1.5rem;">
+        Rate limit exceeded to safeguard exam integrity. {{ description or "Please pause briefly before retrying your request." }}
+    </p>
+    <button type="button" class="btn btn-primary" onclick="window.location.reload()">Retry Now</button>
+</div>
+{% endblock %}

@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}Exam: {{ question.title if question else 'Daily Challenge' }}{% endblock %}
+
+{% block extra_head %}
+<!-- Monaco Editor AMD Loader from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+{% endblock %}
+
+{% block content %}
+{% if submission %}
+    <!-- User Already Submitted Today -->
+    <div class="glass-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--success);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div>
+                <h3 style="display:flex; align-items:center; gap:0.5rem; color:var(--success);">
+                    <span>✓</span> Today's Exam Submitted!
+                </h3>
+                <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.25rem;">
+                    You have already submitted your solution for today's challenge on {{ submission.submission_date.strftime('%B %d, %Y') }}.
+                </p>
+            </div>
+            <div style="display:flex; gap:1.5rem; align-items:center;">
+                <div style="text-align:right;">
+                    <div style="font-size:0.8rem; color:var(--text-secondary);">Score</div>
+                    <div style="font-size:1.5rem; font-weight:700; color:var(--text-primary);">{{ submission.score }}%</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:0.8rem; color:var(--text-secondary);">Test Cases</div>
+                    <div style="font-size:1.5rem; font-weight:700; color:var(--text-primary);">{{ submission.passed_test_cases }}/{{ submission.total_test_cases }}</div>
+                </div>
+                <a href="{{ url_for('dashboard.view_dashboard') }}" class="btn btn-primary btn-sm">
+                    View in Dashboard &rarr;
+                </a>
+            </div>
+        </div>
+
+        {% if submission.ai_feedback %}
+        <div style="margin-top:1.25rem; padding:1rem; background:rgba(99, 102, 241, 0.1); border-radius:var(--radius-md); border:1px solid rgba(99, 102, 241, 0.25);">
+            <div style="font-size:0.85rem; font-weight:700; color:#a78bfa; margin-bottom:0.25rem; display:flex; align-items:center; gap:0.4rem;">
+                <span>🤖 Groq AI Evaluation Feedback:</span>
+            </div>
+            <p style="font-size:0.9rem; color:var(--text-primary); margin:0;">
+                {{ submission.ai_feedback }}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+{% endif %}
+
+{% if not question %}
+    <div class="glass-card" style="text-align:center; padding:3rem;">
+        <h3>No Exam Available</h3>
+        <p style="color:var(--text-secondary); margin-top:0.5rem;">There is no question scheduled for today. Please contact the administrator or check back soon.</p>
+    </div>
+{% else %}
+    <div class="exam-layout">
+        <!-- Left Panel: Problem Statement -->
+        <section class="question-panel">
+            <div class="question-header">
+                <div>
+                    <h2 style="font-size:1.25rem; font-weight:700;">{{ question.title }}</h2>
+                    <div style="display:flex; gap:0.5rem; margin-top:0.4rem; align-items:center;">
+                        <span class="badge badge-{{ question.difficulty }}">{{ question.difficulty }}</span>
+                        <span class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">{{ question.topic }}</span>
+                        {% if question.is_ai_generated %}
+                            <span class="badge badge-ai">Groq AI Question</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="question-body">
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:0.5rem;">Description</h4>
+                    <p style="white-space: pre-line; color: var(--text-primary); font-size: 0.95rem;">{{ question.description }}</p>
+                </div>
+
+                {% if question.input_format %}
+                <div style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:0.4rem;">Input Format</h4>
+                    <div style="font-size:0.9rem; color:var(--text-secondary); white-space:pre-line;">{{ question.input_format }}</div>
+                </div>
+                {% endif %}
+
+                {% if question.output_format %}
+                <div style="margin-bottom: 1.25rem;">
+                    <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:0.4rem;">Output Format</h4>
+                    <div style="font-size:0.9rem; color:var(--text-secondary); white-space:pre-line;">{{ question.output_format }}</div>
+                </div>
+                {% endif %}
+
+                {% if question.constraints %}
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:0.4rem;">Constraints</h4>
+                    <pre style="background:rgba(0,0,0,0.2); padding:0.5rem 0.75rem; border-radius:var(--radius-sm); font-size:0.85rem; font-family:var(--font-mono);">{{ question.constraints }}</pre>
+                </div>
+                {% endif %}
+
+                <!-- Sample Test Cases -->
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--text-secondary); margin-bottom:0.5rem;">Sample Test Cases (2 Visible)</h4>
+                    {% for sample in question.samples %}
+                    <div class="sample-box">
+                        <div style="font-weight:600; font-size:0.85rem; margin-bottom:0.35rem; color:var(--brand-blue);">Sample #{{ loop.index }}</div>
+                        <div style="margin-bottom:0.35rem;">
+                            <span style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted);">Input:</span>
+                            <pre>{{ sample.input }}</pre>
+                        </div>
+                        <div style="margin-bottom:0.35rem;">
+                            <span style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted);">Output:</span>
+                            <pre>{{ sample.output }}</pre>
+                        </div>
+                        {% if sample.explanation %}
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.35rem;">
+                            <em>Explanation:</em> {{ sample.explanation }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if question.hint %}
+                <details style="margin-top: 1rem; cursor: pointer;">
+                    <summary style="font-size:0.85rem; font-weight:600; color:#fbbf24;">💡 View Hint</summary>
+                    <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem; padding:0.5rem; background:rgba(245,158,11,0.08); border-radius:var(--radius-sm);">
+                        {{ question.hint }}
+                    </p>
+                </details>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Right Panel: Python Online Compiler & Monaco Editor -->
+        <section class="compiler-panel">
+            <!-- Compiler Top Bar -->
+            <div class="compiler-topbar">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <label for="select-language" style="font-size:0.85rem; color:var(--text-secondary); font-weight:600;">Language:</label>
+                    <select id="select-language" class="form-control" style="width:auto; padding:0.3rem 0.6rem; font-size:0.85rem;">
+                        <option value="python" selected>Python 3</option>
+                        <option value="javascript">JavaScript (Node.js)</option>
+                        <option value="cpp">C++ (GCC)</option>
+                        <option value="java">Java (OpenJDK)</option>
+                    </select>
+                    <span id="code-size-counter" class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">
+                        0.0 KB / 10 KB
+                    </span>
+                </div>
+
+                <!-- Window Countdown Timer -->
+                <div class="timer-box" title="Time remaining until 10:00 PM IST">
+                    <span>⏱️</span>
+                    <span id="exam-countdown" data-seconds-left="{{ window_info.seconds_left }}">00:00:00</span>
+                    <span style="font-size:0.75rem; color:var(--text-secondary);">Left</span>
+                </div>
+            </div>
+
+            <!-- Monaco Editor Workspace -->
+            <div 
+                id="monaco-editor-container" 
+                class="monaco-container"
+                data-initial-code="{% if submission %}{{ submission.code }}{% else %}# Daily Code Exam - Python 3
+import sys
+
+def solve():
+    # Read input from STDIN:
+    # input_data = sys.stdin.read().strip()
+    pass
+
+if __name__ == '__main__':
+    solve()
+{% endif %}"
+            ></div>
+
+            <!-- Interactive Online Compiler Console / Terminal -->
+            <div class="console-section">
+                <div class="console-tabs">
+                    <button type="button" class="console-tab-btn active" data-tab="stdin">
+                        <span>⌨️ Custom STDIN</span>
+                    </button>
+                    <button type="button" class="console-tab-btn" data-tab="output">
+                        <span>💻 Terminal Output</span>
+                    </button>
+                    <button type="button" class="console-tab-btn" data-tab="samples">
+                        <span>🧪 Sample Tests</span>
+                    </button>
+                </div>
+
+                <!-- STDIN Tab -->
+                <div id="tab-stdin" class="console-tab-content console-tab-pane">
+                    <textarea 
+                        id="stdin-textarea" 
+                        class="console-stdin-input" 
+                        placeholder="Enter standard input here to test your program with custom inputs..."
+                    ></textarea>
+                </div>
+
+                <!-- Terminal Output Tab -->
+                <div id="tab-output" class="console-tab-content console-tab-pane" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Console Stream</span>
+                        <div style="display:flex; gap:0.5rem;">
+                            <span id="terminal-time-badge" class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-secondary);">0 ms</span>
+                            <span id="terminal-status-badge" class="badge badge-easy">READY</span>
+                        </div>
+                    </div>
+                    <pre id="terminal-stdout" class="console-terminal">Click "Run Code" to test execution via sandbox.</pre>
+                </div>
+
+                <!-- Sample Tests Tab -->
+                <div id="tab-samples" class="console-tab-content console-tab-pane" style="display:none;">
+                    <div id="samples-output-container">
+                        <div style="color:var(--text-secondary); font-size:0.85rem;">
+                            Click "Run Sample Tests" to automatically run your solution against the 2 visible sample cases.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="compiler-action-bar">
+                <div>
+                    <button type="button" id="btn-reset-code" class="btn btn-secondary btn-sm" title="Reset to template">
+                        <span>↺ Reset</span>
+                    </button>
+                </div>
+
+                <div style="display:flex; gap:0.75rem;">
+                    <!-- Online Compiler Run Button -->
+                    <button type="button" id="btn-run-code" class="btn btn-secondary" title="Execute in sandbox with custom STDIN">
+                        <span>▶ Run Code</span>
+                    </button>
+
+                    <!-- Run Sample Test Cases -->
+                    <button type="button" id="btn-run-samples" class="btn btn-secondary" title="Test against visible sample cases">
+                        <span>🧪 Run Sample Tests</span>
+                    </button>
+
+                    <!-- Submit Exam Button -->
+                    <button 
+                        type="button" 
+                        id="btn-submit-exam" 
+                        class="btn btn-primary"
+                        {% if submission %}disabled title="You have already submitted today's exam"{% endif %}
+                    >
+                        <span>✓ Submit Exam</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Submission Result Modal -->
+    <div id="submission-result-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 style="font-size:1.25rem;">Exam Result Submitted</h3>
+                <span id="modal-status-badge" class="badge badge-easy">Accepted</span>
+            </div>
+            <div class="modal-body">
+                <div class="stats-grid" style="margin-bottom:1.5rem;">
+                    <div class="stat-card" style="padding:1rem;">
+                        <div>
+                            <div class="stat-label">Final Score</div>
+                            <div id="modal-score-val" class="stat-val" style="color:var(--brand-blue);">100%</div>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="padding:1rem;">
+                        <div>
+                            <div class="stat-label">Hidden Test Cases</div>
+                            <div id="modal-tests-val" class="stat-val">5/5 Passed</div>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="padding:1rem;">
+                        <div>
+                            <div class="stat-label">Daily Streak</div>
+                            <div id="modal-streak-val" class="stat-val" style="color:#fbbf24;">1 Days 🔥</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:rgba(99, 102, 241, 0.1); border:1px solid rgba(99, 102, 241, 0.3); border-radius:var(--radius-md); padding:1rem; margin-bottom:1.5rem;">
+                    <h4 style="font-size:0.85rem; color:#a78bfa; margin-bottom:0.4rem;">🤖 Groq AI Code Feedback</h4>
+                    <p id="modal-ai-feedback" style="font-size:0.9rem; color:var(--text-primary); margin:0;">
+                        Evaluating submission code quality...
+                    </p>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                    <a href="{{ url_for('dashboard.view_dashboard') }}" class="btn btn-primary">
+                        Go to Dashboard &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/exam.js') }}"></script>
+{% endblock %}

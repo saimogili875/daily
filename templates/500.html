@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}500 - Server Error{% endblock %}
+
+{% block content %}
+<div class="closed-wrapper">
+    <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">⚙️</div>
+    <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">500 - Internal Server Error</h1>
+    <p style="color: var(--text-secondary); max-width: 500px; margin-bottom: 1.5rem;">
+        An unexpected server error occurred. Our engineering telemetry has logged this event. No diagnostic stack traces are leaked.
+    </p>
+    <a href="{{ url_for('exam.home') }}" class="btn btn-primary">Return to Safety</a>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Admin: All Platform Submissions{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; font-weight: 800;">Candidate Submissions Master Log</h1>
+    <p style="color: var(--text-secondary); font-size: 0.95rem;">Review all code submissions, scores, and execution diagnostics across the platform.</p>
+</div>
+
+<div class="glass-card">
+    {% if not submissions %}
+        <p style="color: var(--text-secondary); padding: 2rem 0; text-align: center;">No submissions recorded yet.</p>
+    {% else %}
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Date (IST)</th>
+                        <th>Question</th>
+                        <th>Language</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                        <th>Execution</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);">#{{ sub.id }}</td>
+                        <td><strong>{{ sub.user.username }}</strong></td>
+                        <td style="font-family: var(--font-mono); font-size: 0.85rem;">{{ sub.submission_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ sub.question.title }}</td>
+                        <td><span class="badge" style="background:rgba(255,255,255,0.08);">{{ sub.language }}</span></td>
+                        <td>
+                            <span class="badge {% if sub.status == 'Accepted' %}badge-easy{% else %}badge-hard{% endif %}">
+                                {{ sub.status }}
+                            </span>
+                        </td>
+                        <td><strong>{{ sub.score }}%</strong> ({{ sub.passed_test_cases }}/{{ sub.total_test_cases }})</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);">{{ sub.execution_time_ms }} ms</td>
+                        <td>
+                            <button 
+                                type="button" 
+                                class="btn btn-secondary btn-sm btn-admin-view-code"
+                                data-code="{{ sub.code|e }}"
+                                data-user="{{ sub.user.username|e }}"
+                                data-title="{{ sub.question.title|e }}"
+                                data-feedback="{{ sub.ai_feedback|e }}"
+                            >
+                                Inspect
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Admin Code Inspection Modal -->
+<div id="admin-code-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 800px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="admin-modal-title">Submission Details</h3>
+                <span id="admin-modal-subtitle" style="font-size:0.85rem; color:var(--text-secondary);"></span>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="document.getElementById('admin-code-modal').classList.remove('active')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="admin-modal-feedback-box" style="margin-bottom:1rem; padding:0.75rem 1rem; background:rgba(99,102,241,0.1); border-radius:var(--radius-md); border:1px solid rgba(99,102,241,0.25);">
+                <div style="font-size:0.8rem; font-weight:700; color:#a78bfa; margin-bottom:0.25rem;">🤖 Groq AI Evaluation Feedback:</div>
+                <div id="admin-modal-feedback-text" style="font-size:0.85rem;"></div>
+            </div>
+
+            <pre id="admin-modal-code-content" style="background:#0d1117; color:#e6edf3; padding:1rem; border-radius:var(--radius-md); font-family:var(--font-mono); font-size:0.85rem; overflow-x:auto; max-height:400px; white-space:pre-wrap;"></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('admin-code-modal');
+    const buttons = document.querySelectorAll('.btn-admin-view-code');
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('admin-modal-title').textContent = `${this.dataset.user} - ${this.dataset.title}`;
+            document.getElementById('admin-modal-code-content').textContent = this.dataset.code;
+
+            const feedback = this.dataset.feedback;
+            const fbBox = document.getElementById('admin-modal-feedback-box');
+            if (feedback && feedback.trim()) {
+                document.getElementById('admin-modal-feedback-text').textContent = feedback;
+                fbBox.style.display = 'block';
+            } else {
+                fbBox.style.display = 'none';
+            }
+
+            modal.classList.add('active');
+        });
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.classList.remove('active');
+    });
+});
+</script>
+{% endblock %}

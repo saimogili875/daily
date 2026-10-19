@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Exam Window Closed{% endblock %}
+
+{% block content %}
+<div class="closed-wrapper">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.5px;">
+        Daily Exam is Currently Closed
+    </h1>
+    <p style="color: var(--text-secondary); max-width: 600px; font-size: 1.05rem;">
+        The Daily Code Exam arena opens strictly every day from <strong>9:00 PM to 10:00 PM IST</strong> (Asia/Kolkata).
+    </p>
+
+    <div style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+        Current Server Time: <strong style="color: var(--text-primary);">{{ now_ist }}</strong>
+    </div>
+
+    <!-- Live Countdown to Next 9:00 PM IST -->
+    <div class="countdown-clock">
+        <div class="clock-segment">
+            <div id="countdown-hours" class="clock-number">00</div>
+            <div class="clock-label">Hours</div>
+        </div>
+        <div class="clock-segment">
+            <div id="countdown-minutes" class="clock-number">00</div>
+            <div class="clock-label">Minutes</div>
+        </div>
+        <div class="clock-segment">
+            <div id="countdown-seconds" class="clock-number">00</div>
+            <div class="clock-label">Seconds</div>
+        </div>
+    </div>
+
+    <div style="max-width: 580px; text-align: left; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 2rem;">
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--brand-blue);">📋 Exam Guidelines</h4>
+        <ul style="color: var(--text-secondary); font-size: 0.85rem; padding-left: 1.25rem; line-height: 1.7;">
+            <li>Daily time window: <strong>9:00 PM – 10:00 PM IST</strong> strictly enforced on the server.</li>
+            <li>One original problem per day, rotating algorithmic challenges and AI-generated topics.</li>
+            <li>Single submission allowed per candidate per day.</li>
+            <li>Code execution sandbox with online compiler (STDIN support) during the active window.</li>
+        </ul>
+    </div>
+
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('dashboard.view_dashboard') }}" class="btn btn-secondary">
+            View Your Dashboard
+        </a>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">
+            Refresh Status
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    let totalSeconds = {{ window_info.seconds_left }};
+
+    const hoursEl = document.getElementById('countdown-hours');
+    const minutesEl = document.getElementById('countdown-minutes');
+    const secondsEl = document.getElementById('countdown-seconds');
+
+    function update() {
+        if (totalSeconds <= 0) {
+            window.location.reload();
+            return;
+        }
+
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+
+        const pad = (n) => String(n).padStart(2, '0');
+        if (hoursEl) hoursEl.textContent = pad(h);
+        if (minutesEl) minutesEl.textContent = pad(m);
+        if (secondsEl) secondsEl.textContent = pad(s);
+
+        totalSeconds--;
+    }
+
+    update();
+    setInterval(update, 1000);
+})();
+</script>
+{% endblock %}

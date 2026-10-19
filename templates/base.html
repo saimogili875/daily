@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Daily Code Exam - Timed Algorithmic Coding Challenge (9:00 PM to 10:00 PM IST) with AI Evaluations and Real-Time Sandboxes">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}Daily Code Exam{% endblock %} | 9:00 - 10:00 PM IST</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Production Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="ambient-glow"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="{{ url_for('exam.home') }}" class="nav-brand">
+            <div class="brand-icon">&lt;/&gt;</div>
+            <span>Daily Code Exam</span>
+            <span class="nav-badge">9-10 PM IST</span>
+        </a>
+
+        <ul class="nav-menu">
+            {% if current_user.is_authenticated %}
+                <li>
+                    <a href="{{ url_for('exam.exam_page') }}" class="nav-link {% if request.endpoint == 'exam.exam_page' %}active{% endif %}">
+                        <span>⚡ Today's Exam</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('dashboard.view_dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard.view_dashboard' %}active{% endif %}">
+                        <span>📊 Dashboard</span>
+                    </a>
+                </li>
+                {% if current_user.is_admin %}
+                <li>
+                    <a href="{{ url_for('exam.admin_upload') }}" class="nav-link {% if request.endpoint == 'exam.admin_upload' %}active{% endif %}">
+                        <span>🤖 AI Question Upload</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('dashboard.admin_submissions') }}" class="nav-link {% if request.endpoint == 'dashboard.admin_submissions' %}active{% endif %}">
+                        <span>🛡️ Submissions</span>
+                    </a>
+                </li>
+                {% endif %}
+                <li>
+                    <div class="nav-streak-pill" title="Current Daily Exam Streak">
+                        <span>🔥</span>
+                        <span>{{ current_user.current_streak }}d</span>
+                    </div>
+                </li>
+                <li>
+                    <a href="{{ url_for('auth.change_password') }}" class="nav-link" title="Account Security">
+                        <span>⚙️</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm">
+                        <span>Logout</span>
+                    </a>
+                </li>
+            {% else %}
+                <li>
+                    <a href="{{ url_for('auth.login') }}" class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}">
+                        <span>Login</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">
+                        <span>Register</span>
+                    </a>
+                </li>
+            {% endif %}
+
+            <!-- Dark / Light Theme Toggle -->
+            <li>
+                <button type="button" class="theme-toggle" id="theme-toggle-btn" title="Toggle Dark/Light Mode" aria-label="Toggle Theme">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Flash Notifications -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+                            <span>{{ message }}</span>
+                            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; cursor:pointer; font-size:1.1rem; line-height:1;">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; max-width:1440px; margin:0 auto;">
+            <div>
+                <strong>Daily Code Exam</strong> &bull; Strict Time-Window Server Architecture (9:00 PM – 10:00 PM IST)
+            </div>
+            <div>
+                External Sandboxed Execution via Piston/Judge0 &bull; Groq LLaMA-3.3 AI Evaluation
+            </div>
+        </div>
+    </footer>
+
+    <!-- Theme Switcher Script -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('dce-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = savedTheme === 'light' ? '☀️' : '🌙';
+
+            const toggleBtn = document.getElementById('theme-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    const current = document.documentElement.getAttribute('data-theme');
+                    const next = current === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', next);
+                    localStorage.setItem('dce-theme', next);
+                    if (icon) icon.textContent = next === 'light' ? '☀️' : '🌙';
+
+                    // Update Monaco theme if active
+                    if (window.updateMonacoTheme) {
+                        window.updateMonacoTheme(next);
+                    }
+                });
+            }
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

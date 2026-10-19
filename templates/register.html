@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card" style="max-width: 480px;">
+        <div class="auth-header">
+            <h2>Create Account</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Join the daily competitive coding challenge</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="username" class="form-label">Username (3-20 characters)</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-control" 
+                    placeholder="e.g. pythoneer" 
+                    value="{{ request.form.get('username', '') }}"
+                    pattern="^[a-zA-Z0-9_]{3,20}$"
+                    title="3-20 alphanumeric characters or underscores"
+                    required 
+                    autocomplete="username"
+                >
+                {% if errors.get('username') %}
+                    <div class="field-error">{{ errors.get('username') }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    class="form-control" 
+                    placeholder="you@domain.com" 
+                    value="{{ request.form.get('email', '') }}"
+                    required 
+                    autocomplete="email"
+                >
+                {% if errors.get('email') %}
+                    <div class="field-error">{{ errors.get('email') }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-control" 
+                    placeholder="Min 10 chars: upper, lower, digit, symbol" 
+                    required 
+                    autocomplete="new-password"
+                >
+                {% if errors.get('password') %}
+                    <div class="field-error">{{ errors.get('password') }}</div>
+                {% endif %}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+                    Must have 10+ characters, 1 uppercase, 1 lowercase, 1 digit, and 1 symbol.
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <input 
+                    type="password" 
+                    id="confirm_password" 
+                    name="confirm_password" 
+                    class="form-control" 
+                    placeholder="Repeat password" 
+                    required 
+                    autocomplete="new-password"
+                >
+                {% if errors.get('confirm_password') %}
+                    <div class="field-error">{{ errors.get('confirm_password') }}</div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                Create Account
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account? 
+            <a href="{{ url_for('auth.login') }}">Sign In</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
